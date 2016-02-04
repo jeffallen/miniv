@@ -37,6 +37,20 @@ the targeted environment.
 
 The current testing environment is MacOS.
 
+Building without Go
+-------------------
+
+During normal development, the C is built with "go test".
+
+To use the library outside of the Go/cgo test environment,
+build it with CMake:
+
+	$ mkdir obj
+	$ cd obj
+	$ cmake .. && make
+	$ ls -l libminiv.a
+	-rw-r--r--  1 jra  staff  5016 Feb  4 23:52 libminiv.a
+
 C++?
 ----
 
@@ -47,3 +61,4 @@ I'm even worse at C++ than C. That's why I program Go.
 But even if I was a C++ hacker, there are lots of embedded systems
 that are not ready for C++. This Vanadium implementation is
 targeted to them, so it is in C99.
+
