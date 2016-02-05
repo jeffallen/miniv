@@ -2,10 +2,13 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-#include "err.h"
 #include <stdio.h>
+#include "miniv.h"
 
-// $ awk -F// '/  ERR/ { err=$1; msg=$2; sub(/,/, "", err); sub(/^ /, "", msg); printf("[%s] = \"%s\",\n", err, msg)}' < err.h
+// This table is generated from err.h by hand using:
+//   awk -F// '/  ERR/ { err=$1; msg=$2;
+//     sub(/,/, "", err); sub(/^ /, "", msg);
+//     printf("[%s] = \"%s\",\n", err, msg)}' < err.h
 
 static const char *errstrs[] = {
 [  ERR_OK      ] = "No error.",

@@ -22,3 +22,5 @@ enum {
   ERR_CONNECTION, // Connection broken.
 };
 
+#include "message.h"
+#include "framer.h"

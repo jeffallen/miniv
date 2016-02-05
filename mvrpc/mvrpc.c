@@ -7,9 +7,7 @@
 #include <netdb.h> 
 #include <unistd.h>
 
-#include "../err.h"
-#include "../framer/framer.h"
-#include "../flow/message/message.h"
+#include "miniv.h"
 
 typedef struct {
   unsigned char *buf;
@@ -73,7 +71,7 @@ void hexDump (char *desc, void *addr, int len) {
 
 void bufDump(buf_t *buf) {
   char desc[100];
-  sprintf(desc, "Buffer len=%d, cap=%d\n", buf->len, buf->cap);
+  sprintf(desc, "Buffer len=%d, cap=%d", buf->len, buf->cap);
   hexDump(desc, buf->buf, buf->len);
 }
 

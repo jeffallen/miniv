@@ -7,10 +7,13 @@ project (miniv)
 
 set(cfiles
 	err.c
-	flow/message/message.c
-	framer/framer.c
+	message.c
+	framer.c
 )
 add_library (miniv ${cfiles})
+target_include_directories (miniv PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+
+add_custom_target(gotest COMMAND go test -v ..)
 
 add_subdirectory(mvrpc)
 
