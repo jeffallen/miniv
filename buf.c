@@ -10,8 +10,8 @@
 
 // thanks SO:
 // https://stackoverflow.com/questions/7775991/how-to-get-hexdump-of-a-structure-data
-static void hexDump (char *desc, void *addr, int len) {
-    int i;
+static void hexDump (char *desc, void *addr, unsigned long len) {
+    unsigned int i;
     unsigned char buff[17];
     unsigned char *pc = (unsigned char*)addr;
 
@@ -21,10 +21,6 @@ static void hexDump (char *desc, void *addr, int len) {
 
     if (len == 0) {
         printf("  ZERO LENGTH\n");
-        return;
-    }
-    if (len < 0) {
-        printf("  NEGATIVE LENGTH: %i\n",len);
         return;
     }
 
@@ -64,15 +60,25 @@ static void hexDump (char *desc, void *addr, int len) {
 
 void bufDump(buf_t *buf) {
   char desc[100];
-  sprintf(desc, "Buffer len=%d, cap=%d", buf->len, buf->cap);
+  sprintf(desc, "Buffer len=%ld, cap=%ld", buf->len, buf->cap);
   hexDump(desc, buf->buf, buf->len);
 }
 
 buf_t bufFromString(const char *str) {
   buf_t ret;
   ret.len = strlen(str);
-  ret.buf = (unsigned char *)str;
+  ret.buf = (unsigned char *)(uintptr_t)str;
   return ret;
+}
+
+err_t bufAppendChar(buf_t *b, unsigned char x) {
+  err_t err = bufExpand(b, b->len + 1);
+  if (err != ERR_OK) {
+    return err;
+  }
+  b->buf[b->len] = x;
+  b->len++;
+  return ERR_OK;
 }
 
 err_t bufAppend(buf_t *b, buf_t in) {
@@ -84,17 +90,23 @@ err_t bufAppend(buf_t *b, buf_t in) {
   return ERR_OK;
 }
 
-err_t bufExpand(buf_t *b, int len) {
+err_t bufExpand(buf_t *b, unsigned long len) {
   if (b->cap < len) {
-    free(b->buf);
-    b->len = 0;
-    b->cap = 0;
-    b->buf = malloc(len);
-    if (b->buf == NULL) {
+    unsigned char *p = malloc(len);
+    if (p == NULL) {
       return ERR_MEM;
     }
+    memcpy(p, b->buf, b->len);
+    free(b->buf);
+    b->buf = p;
     b->cap = len;
   }
   return ERR_OK;
 }
 
+unsigned long bufRemaining(buf_t *b) {
+  if (b->len > b->cap) {
+    return 0;
+  }
+  return b->cap - b->len;
+}

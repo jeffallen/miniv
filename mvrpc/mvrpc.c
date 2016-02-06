@@ -30,7 +30,7 @@ int main(int argc, char **argv) {
   
   // attention: nameParse mutates name.
   ckerr("parsing name", nameParse(name, &host, &portstr));
-  int port = atoi(portstr);
+  uint16_t port = (uint16_t)atoi(portstr);
 
   printf("Connecting to %s:%d\n", host, port);
   ckerr("connecting", connectionOpen(host, port, c));

@@ -8,10 +8,18 @@
 #include <stdint.h>
 
 typedef enum {
-  Setup, TearDown, EnterLameDuck, AckLameDuck,
-  Auth, OpenFlow, Release, Data,
-  HealthCheckRequest, HealthCheckReply,
-  Unknown
+  lowestMessageType = 0x71,  // marker, used by messageType()
+
+  // These are defined by the protocol.
+  HealthCheckReply = 0x72,
+  HealthCheckRequest,
+  Data, Release, OpenFlow, Auth,
+  AckLameDuck,EnterLameDuck, TearDown, Setup,
+  
+  highestMessageType,  // marker, used by messageType()
+
+  // This is not defined by the protocol. Used internally.
+  Unknown,
 } MessageType;
 
 typedef enum {
@@ -36,5 +44,6 @@ struct Message {
   } u;
 };
 
-struct Message *messageNew();
+struct Message *messageNew(void);
 err_t messageRead(const unsigned char *in, uint64_t len, struct Message *m);
+err_t messageAppend(struct Message *m, buf_t *to);

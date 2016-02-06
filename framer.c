@@ -7,20 +7,20 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-const unsigned int maxPacketSize = 0xffffff;
+static const unsigned int maxPacketSize = 0xffffff;
 
-err_t frameReadLen(int fd, int *len) {
+err_t frameReadLen(int fd, unsigned long *len) {
   unsigned char buf[3];
   ssize_t n = read(fd, buf, 3);
   if (n != 3) {
     return ERR_CONNECTION;
   }
   
-  *len = maxPacketSize - (buf[0]<<16 | buf[1]<<8 | buf[2]);
+  *len = maxPacketSize - (unsigned long)(buf[0]<<16 | buf[1]<<8 | buf[2]);
   return ERR_OK;
 }
 
-err_t frameWriteLen(int fd, int len) {
+err_t frameWriteLen(int fd, unsigned long len) {
   unsigned char dst[3];
   
   len = maxPacketSize - len;
@@ -42,7 +42,7 @@ err_t frameWrite(int fd, buf_t *b) {
   }
   
   ssize_t n = write(fd, b->buf, b->len);
-  if (n != b->len) {
+  if ((unsigned long)n != b->len) {
     return ERR_CONNECTION;
   }
   return ERR_OK;

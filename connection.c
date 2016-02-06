@@ -10,12 +10,12 @@
 
 #include "miniv.h"
 
-err_t connectionEnsureFrame(struct connection *c, int len) {
+err_t connectionEnsureFrame(struct connection *c, unsigned long len) {
   return bufExpand(&c->frame, len);
 }
   
 err_t connectionReadFrame(struct connection *c) {
-  int len;
+  unsigned long len;
   err_t err = frameReadLen(c->fd, &len);
   if (err != ERR_OK) {
     return err;
@@ -28,12 +28,12 @@ err_t connectionReadFrame(struct connection *c) {
   c->frame.len = 0;
   unsigned char *p = c->frame.buf;
   while (c->frame.len < len) {
-    int n = read(c->fd, p, len - c->frame.len);
+    ssize_t n = read(c->fd, p, len - c->frame.len);
     if (n < 0) {
       return ERR_CONNECTION;
     }
     p += n;
-    c->frame.len += n;
+    c->frame.len += (unsigned long)n;
   }
   return ERR_OK;
 }

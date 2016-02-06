@@ -8,11 +8,14 @@
 
 typedef struct {
   unsigned char *buf;
-  int len;
-  int cap;
+  unsigned long len;
+  unsigned long cap;
 } buf_t;
 
 void bufDump(buf_t *buf);
-err_t bufExpand(buf_t *b, int len);
+err_t bufExpand(buf_t *b, unsigned long len);
+unsigned long bufRemaining(buf_t *b);
 buf_t bufFromString(const char *str);
+
 err_t bufAppend(buf_t *b, buf_t in);
+err_t bufAppendChar(buf_t *b, unsigned char x);

@@ -5,6 +5,10 @@
 cmake_minimum_required(VERSION 2.8)
 project (miniv)
 
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Weverything -Wno-padded \
+		  -Wno-switch-enum -Wno-covered-switch-default \
+		  -Wno-gnu-empty-initializer -Werror")
+
 set(cfiles
 	buf.c
 	connection.c

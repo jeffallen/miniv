@@ -10,31 +10,12 @@
 // for debug
 //#include <stdio.h>
 
-MessageType messageType(unsigned char in) {
-  switch (in) {
-    case 0x7e:
-      return Setup;
-    case 0x7d:
-      return TearDown;
-    case 0x7c:
-      return EnterLameDuck;
-    case 0x7b:
-      return AckLameDuck;
-    case 0x7a:
-      return Auth;
-    case 0x79:
-      return OpenFlow;
-    case 0x78:
-      return Release;
-    case 0x77:
-      return Data;
-    case 0x73:
-      return HealthCheckRequest;
-    case 0x72:
-      return HealthCheckReply;
-    default:
-      return Unknown;
-    }
+static MessageType messageType(unsigned char in) {
+  MessageType m = in;
+  if (in > lowestMessageType && in < highestMessageType) {
+    return m;
+  }
+  return Unknown;
 }
 
 struct Message *messageNew() {
@@ -43,7 +24,7 @@ struct Message *messageNew() {
 
 // Reads a varuint64 off of the front of the buffer described by data/len
 // and updates the caller's data/len to indicate the data has been consumed.
-err_t readVarUint64(const unsigned char **data, uint64_t *len, uint64_t *v) {
+static err_t readVarUint64(const unsigned char **data, uint64_t *len, uint64_t *v) {
   if (data == NULL || len == NULL) {
     return ERR_PARAM;
   }
@@ -74,7 +55,7 @@ err_t readVarUint64(const unsigned char **data, uint64_t *len, uint64_t *v) {
   return ERR_OK;
 }
 
-err_t readLenBytes(const unsigned char **data, uint64_t *len,
+static err_t readLenBytes(const unsigned char **data, uint64_t *len,
 		   const unsigned char **payload, uint64_t *plen) {
   if (data == NULL || len == NULL || payload == NULL || plen == NULL) {
     return ERR_PARAM;
@@ -107,14 +88,14 @@ err_t readLenBytes(const unsigned char **data, uint64_t *len,
   printf("\n");
   */
 
-  memcpy((void *)*payload, *data, *plen);
+  memcpy((void *)(uintptr_t)*payload, *data, *plen);
   *data = *data + *plen;
   *len = *len - *plen;
   
   return ERR_OK;
 }
 
-err_t readSetupOption(const unsigned char **data, uint64_t *len,
+static err_t readSetupOption(const unsigned char **data, uint64_t *len,
 		      uint64_t *opt, const unsigned char **payload, uint64_t *plen) {
   err_t err = readVarUint64(data, len, opt);
   if (err != ERR_OK) {
@@ -124,19 +105,19 @@ err_t readSetupOption(const unsigned char **data, uint64_t *len,
   return err;
 }
 
-err_t messageReadSetup(const unsigned char *data, uint64_t len, struct Setup *s) {
+static err_t messageReadSetup(const unsigned char *data, uint64_t len, struct Setup *s) {
   uint64_t v;
   err_t err = readVarUint64(&data, &len, &v);
   if (err != ERR_OK) {
       return err;
   }
-  s->ver_min = v;
+  s->ver_min = (uint32_t)v;
 
   err = readVarUint64(&data, &len, &v);
   if (err != ERR_OK) {
       return err;
   }
-  s->ver_max = v;
+  s->ver_max = (uint32_t)v;
 
   while (err == ERR_OK && len > 0) {
     uint64_t o64;
@@ -144,12 +125,12 @@ err_t messageReadSetup(const unsigned char *data, uint64_t len, struct Setup *s)
     const unsigned char *payload = NULL;
     uint64_t plen;
     
-    err_t err = readSetupOption(&data, &len, &o64, &payload, &plen);
+    err = readSetupOption(&data, &len, &o64, &payload, &plen);
     if (err != ERR_OK) {
       return err;
     }
 
-    SetupOption opt = o64;
+    SetupOption opt = (uint32_t)o64;
     switch (opt) {
     case peerNaClPublicKeyOption:
       if (plen != 32) {
@@ -178,12 +159,14 @@ err_t messageReadSetup(const unsigned char *data, uint64_t len, struct Setup *s)
 	}
 	break;
       }
+    case peerRemoteEndpointOption:
+    case peerLocalEndpointOption:
     default:
       // Unhandled options are silently dropped for now.
       break;
     }
   err:  
-    free((void *)payload);
+    free((void*)(uintptr_t)payload);
   }
 
   return err;
@@ -204,5 +187,51 @@ err_t messageRead(const unsigned char *data, uint64_t len, struct Message *m) {
   default:
       return ERR_BADMSG;
     }
+}
+
+static err_t writeVarUint64(buf_t *to, uint64_t u) {
+  // Since writeVarUint64 is often called one after another, when some is needed,
+  // add lots.
+  if (bufRemaining(to) < 9) {
+    err_t err = bufExpand(to, 64);
+    if (err != ERR_OK) {
+      return err;
+    }
+  }
+  
+  if (u <= 0x7f) {
+      return bufAppendChar(to, (unsigned char)u);
+  }
+  int shift = 56;
+  unsigned char l = 7;
+  for (; shift >= 0 && ((u>>shift)&0xff) == 0; shift -= 8, l--) {
+  }
+  bufAppendChar(to, 0xff-l);
+  for (; shift >= 0; shift--) {
+    bufAppendChar(to, (u>>shift & 0xff));
+  }
+  return ERR_OK;
+}
+
+#define ck(x) do { err_t err = (x); if (err != ERR_OK) return err; } while (1)
+static err_t messageAppendSetup(struct Setup *s, buf_t *to) {
+  ck(bufAppendChar(to, Setup));
+  ck(writeVarUint64(to, s->ver_min));
+  ck(writeVarUint64(to, s->ver_max));
+  //return ERR_BADMSG;
+}
+#undef ck
+
+err_t messageAppend(struct Message *m, buf_t *to) {
+  if (!m || !to) {
+    return ERR_PARAM;
+  }
+
+  switch (m->mtype) {
+  case Setup:
+    return messageAppendSetup(&m->u.Setup, to);
+  default:
+    return ERR_BADMSG;
+  }
 }
 

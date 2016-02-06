@@ -8,11 +8,11 @@
 #pragma once
 
 struct connection {
-  int fd;
   buf_t frame;
+  int fd;
 };
 
-err_t connectionEnsureFrame(struct connection *c, int len);
+err_t connectionEnsureFrame(struct connection *c, unsigned long len);
 err_t connectionReadFrame(struct connection *c);
 err_t connectionOpen(const char *hostname, uint16_t port, struct connection *c);
 
