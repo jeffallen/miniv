@@ -31,7 +31,7 @@ func (f *Framer) fd() C.int {
 }
 
 func (f *Framer) ReadFrame() ([]byte, error) {
-	var n C.int
+	var n C.ulong
 
 	if err := C.frameReadLen(f.fd(), &n); err != C.ERR_OK {
 		return nil, fmt.Errorf("frameReadLen error code %v", err)
@@ -44,7 +44,7 @@ func (f *Framer) ReadFrame() ([]byte, error) {
 }
 
 func (f *Framer) WriteFrame(out []byte) (int, error) {
-	if err := C.frameWriteLen(f.fd(), C.int(len(out))); err != C.ERR_OK {
+	if err := C.frameWriteLen(f.fd(), C.ulong(len(out))); err != C.ERR_OK {
 		return 0, fmt.Errorf("frameWriteLen error code %v", err)
 	}
 	return f.rwc.Write(out)

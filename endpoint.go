@@ -10,10 +10,7 @@ package miniv
 #include <string.h>
 */
 import "C"
-import (
-	"errors"
-	"unsafe"
-)
+import "unsafe"
 
 func nameParse(in string) (host string, port string, err error) {
 	tmp := C.CString(in)
@@ -28,8 +25,4 @@ func nameParse(in string) (host string, port string, err error) {
 	host = C.GoString(h)
 	port = C.GoString(p)
 	return
-}
-
-func GoError(e C.err_t) error {
-	return errors.New(C.GoString(C.errstr(e)))
 }

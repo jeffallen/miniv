@@ -58,10 +58,10 @@ static void hexDump (char *desc, void *addr, unsigned long len) {
     printf ("  %s\n", buff);
 }
 
-void bufDump(buf_t *buf) {
+void bufDump(const buf_t buf) {
   char desc[100];
-  sprintf(desc, "Buffer len=%ld, cap=%ld", buf->len, buf->cap);
-  hexDump(desc, buf->buf, buf->len);
+  sprintf(desc, "Buffer len=%ld, cap=%ld", buf.len, buf.cap);
+  hexDump(desc, buf.buf, buf.len);
 }
 
 buf_t bufFromString(const char *str) {
@@ -87,6 +87,7 @@ err_t bufAppend(buf_t *b, buf_t in) {
     return err;
   }
   memcpy(b->buf+b->len, in.buf, in.len);
+  b->len += in.len;
   return ERR_OK;
 }
 
@@ -102,6 +103,12 @@ err_t bufExpand(buf_t *b, unsigned long len) {
     b->cap = len;
   }
   return ERR_OK;
+}
+
+void bufFree(buf_t *b) {
+  free(b->buf);
+  b->len = 0;
+  b->cap = 0;
 }
 
 unsigned long bufRemaining(buf_t *b) {

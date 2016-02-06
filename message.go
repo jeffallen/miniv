@@ -10,7 +10,6 @@ package miniv
 */
 import "C"
 import (
-	"fmt"
 	"reflect"
 	"unsafe"
 
@@ -22,9 +21,14 @@ func Read(in []byte) (message.Message, error) {
 	m := C.messageNew()
 	defer C.free(unsafe.Pointer(m))
 
-	err := C.messageRead((*C.uchar)(ptr(in)), C.uint64_t(len(in)), m)
+	var buf C.buf_t
+	buf.buf = (*C.uchar)(ptr(in))
+	buf.len = C.ulong(len(in))
+	buf.cap = C.ulong(cap(in))
+
+	err := C.messageRead(buf, m)
 	if err != C.ERR_OK {
-		return nil, fmt.Errorf("message read: error %v", err)
+		return nil, GoError(err)
 	}
 
 	if m.mtype == C.Setup {

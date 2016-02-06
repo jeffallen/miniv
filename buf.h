@@ -12,10 +12,21 @@ typedef struct {
   unsigned long cap;
 } buf_t;
 
-void bufDump(buf_t *buf);
+void bufDump(const buf_t buf);
+
+// bufFree deallocates the underlying buffer and sets
+// len and cap to 0.
+void bufFree(buf_t *buf);
+
 err_t bufExpand(buf_t *b, unsigned long len);
 unsigned long bufRemaining(buf_t *b);
 buf_t bufFromString(const char *str);
 
-err_t bufAppend(buf_t *b, buf_t in);
+// bufAppend appends in onto the end of the buffer pointed to by b.
+// It will expand the buffer if necessary to make space.
+err_t bufAppend(buf_t *b, const buf_t in);
+
+// bufAppend appends a single character x onto the end of the
+// buffer pointed to by b. It will expand the buffer if necessary
+// to make space.
 err_t bufAppendChar(buf_t *b, unsigned char x);

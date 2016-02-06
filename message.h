@@ -2,24 +2,26 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+#include <stdint.h>
 #include "miniv.h"
 #pragma once
 
-#include <stdint.h>
-
 typedef enum {
-  lowestMessageType = 0x71,  // marker, used by messageType()
+  lowestMessageType = 0x74,  // marker, used by messageType()
 
   // These are defined by the protocol.
-  HealthCheckReply = 0x72,
-  HealthCheckRequest,
-  Data, Release, OpenFlow, Auth,
-  AckLameDuck,EnterLameDuck, TearDown, Setup,
+  HealthCheckReply = 0x75,
+  HealthCheckRequest = 0x76,
+  Data = 0x77,
+  Release = 0x78,
+  OpenFlow = 0x79,
+  Auth = 0x7a,
+  AckLameDuck = 0x7b,
+  EnterLameDuck = 0x7c,
+  TearDown = 0x7d,
+  Setup = 0x7e,
   
-  highestMessageType,  // marker, used by messageType()
-
-  // This is not defined by the protocol. Used internally.
-  Unknown,
+  Invalid = 0x7f,  // marker, used by messageType()
 } MessageType;
 
 typedef enum {
@@ -33,6 +35,7 @@ typedef enum {
 struct Setup {
   uint32_t ver_min, ver_max;
   unsigned char PeerNaClPublicKey[32];
+  char *PeerRemoteEndpoint, *PeerLocalEndpoint;
   uint64_t mtu;
   uint64_t sharedTokens;
 };
@@ -45,5 +48,10 @@ struct Message {
 };
 
 struct Message *messageNew(void);
-err_t messageRead(const unsigned char *in, uint64_t len, struct Message *m);
+void messageFree(struct Message *);
+
+// messageRead deserializes a message out of buffer in into the structure pointed
+// to by m.
+err_t messageRead(const buf_t in, struct Message *m);
+
 err_t messageAppend(struct Message *m, buf_t *to);

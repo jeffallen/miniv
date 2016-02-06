@@ -44,7 +44,7 @@ int main(int argc, char **argv) {
   ckerr("write first frame", frameWrite(c->fd, &c->frame));
 
   ckerr("read frame", connectionReadFrame(c));
-  bufDump(&c->frame);
+  bufDump(c->frame);
 
   // Whoo hoo!!
 
