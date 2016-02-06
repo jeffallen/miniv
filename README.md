@@ -1,7 +1,7 @@
 miniv
 =====
 
-An experimental implementation of the minimal part of Vanadium
+An experimental implementation of the minimal part of [Vanadium](https://vanadium.github.io)
 necessary to do an RPC in C.
 
 The target systems are those that are too small to run Go, but
@@ -28,8 +28,9 @@ And if you happened to have a copy of the official v.io
 Go code in your GOPATH, then you could even do something really
 snazzy: You can use the reference implementation to validate your
 new implementation. For an example, see flow/message/message_test.go
-where we use v.io/v23/flow/message to serialize a message, and then
-we use our new implementation in C to deserialize it.
+where we use [v.io/v23/flow/message](https://godoc.org/v.io/v23/flow/message)
+to serialize a message, and then we use our new implementation in C
+to deserialize it.
 
 As a general rule, *.[ch] are the C implementation. *.go are the
 test files, and nothing you see in them is production code for
@@ -48,8 +49,11 @@ build it with CMake:
 	$ mkdir obj
 	$ cd obj
 	$ cmake .. && make
-	$ ls -l libminiv.a
-	-rw-r--r--  1 jra  staff  5016 Feb  4 23:52 libminiv.a
+	$ ls -l libminiv.a mvrpc/mvrpc 
+        -rwxr-xr-x  1 jra  staff  14296 Feb  6 11:30 mvrpc/mvrpc
+	-rw-r--r--  1 jra  staff  5016  Feb  4 23:52 libminiv.a
+
+A bit smaller than the Go Vanadium!
 
 C++?
 ----
