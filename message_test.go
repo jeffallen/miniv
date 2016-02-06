@@ -5,6 +5,7 @@
 package miniv
 
 import (
+	"bytes"
 	"testing"
 
 	"v.io/v23/context"
@@ -33,13 +34,17 @@ func TestMessage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Logf("input: %#v", input)
 
 	m2, err := Read(input)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Logf("out: %#v", m2)
-	su := m2.(*message.Setup)
-	t.Logf("out: %#v", su.PeerNaClPublicKey)
+
+	if su, ok := m2.(*message.Setup); ok {
+		if !bytes.Equal(su.PeerNaClPublicKey[:], s.PeerNaClPublicKey[:]) {
+			t.Error("PeerNaClPublicKey does not match")
+		}
+	} else {
+		t.Errorf("wrong type: %T", m2)
+	}
 }

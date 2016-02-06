@@ -6,6 +6,9 @@ cmake_minimum_required(VERSION 2.8)
 project (miniv)
 
 set(cfiles
+	buf.c
+	connection.c
+	endpoint.c
 	err.c
 	message.c
 	framer.c

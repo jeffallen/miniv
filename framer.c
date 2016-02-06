@@ -13,7 +13,7 @@ err_t frameReadLen(int fd, int *len) {
   unsigned char buf[3];
   ssize_t n = read(fd, buf, 3);
   if (n != 3) {
-    return ERR;
+    return ERR_CONNECTION;
   }
   
   *len = maxPacketSize - (buf[0]<<16 | buf[1]<<8 | buf[2]);
@@ -30,8 +30,20 @@ err_t frameWriteLen(int fd, int len) {
 
   ssize_t n = write(fd, dst, 3);
   if (n != 3) {
-    return ERR;
+    return ERR_CONNECTION;
   }
   return ERR_OK;
 }
 
+err_t frameWrite(int fd, buf_t *b) {
+  err_t err = frameWriteLen(fd, b->len);
+  if (err != ERR_OK) {
+    return err;
+  }
+  
+  ssize_t n = write(fd, b->buf, b->len);
+  if (n != b->len) {
+    return ERR_CONNECTION;
+  }
+  return ERR_OK;
+}

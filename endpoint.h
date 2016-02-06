@@ -3,8 +3,7 @@
 // license that can be found in the LICENSE file.
 
 #include "miniv.h"
-#pragma once
 
-err_t frameReadLen(int fd, int *len);
-err_t frameWriteLen(int fd, int len);
-err_t frameWrite(int fd, buf_t *b);
+err_t nameParse(char *name, char **host, char **port);
+
+
