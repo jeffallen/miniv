@@ -6,5 +6,4 @@
 #pragma once
 
 err_t frameReadLen(int fd, unsigned long *len);
-err_t frameWriteLen(int fd, unsigned long len);
-err_t frameWrite(int fd, buf_t *b);
+err_t frameWrite(int fd, buf_t b);

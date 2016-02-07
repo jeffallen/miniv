@@ -73,3 +73,18 @@ err_t connectionOpen(const char *hostname, uint16_t port, struct connection *c) 
   return ERR_OK;
 }
 
+err_t connectionHandshake(struct connection *c) {
+  struct Message s = {};
+  s.mtype = Setup;
+  s.u.Setup.ver_min = RPC_VER_DEFAULT;
+  s.u.Setup.ver_max = RPC_VER_DEFAULT;
+  
+  c->frame.len = 0;
+  err_t err = messageAppend(&s, &c->frame);
+  if (err != ERR_OK) {
+    return err;
+  }
+  
+  bufDump(c->frame);
+  return frameWrite(c->fd, c->frame);
+}

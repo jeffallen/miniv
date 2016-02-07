@@ -32,6 +32,10 @@ typedef enum {
   sharedTokensOption
 } SetupOption;
 
+enum {
+  RPC_VER_DEFAULT = 14
+};
+
 struct Setup {
   uint32_t ver_min, ver_max;
   unsigned char PeerNaClPublicKey[32];
@@ -49,6 +53,8 @@ struct Message {
 
 struct Message *messageNew(void);
 void messageFree(struct Message *);
+
+const char *messageTypeName(MessageType m);
 
 // messageRead deserializes a message out of buffer in into the structure pointed
 // to by m.

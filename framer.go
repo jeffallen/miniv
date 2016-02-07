@@ -10,7 +10,6 @@ package miniv
 import "C"
 
 import (
-	"fmt"
 	"io"
 	"os"
 )
@@ -34,7 +33,7 @@ func (f *Framer) ReadFrame() ([]byte, error) {
 	var n C.ulong
 
 	if err := C.frameReadLen(f.fd(), &n); err != C.ERR_OK {
-		return nil, fmt.Errorf("frameReadLen error code %v", err)
+		return nil, GoError(err)
 	}
 
 	out := make([]byte, int(n))
@@ -44,8 +43,8 @@ func (f *Framer) ReadFrame() ([]byte, error) {
 }
 
 func (f *Framer) WriteFrame(out []byte) (int, error) {
-	if err := C.frameWriteLen(f.fd(), C.ulong(len(out))); err != C.ERR_OK {
-		return 0, fmt.Errorf("frameWriteLen error code %v", err)
+	if err := C.frameWrite(f.fd(), toBuf_t(out)); err != C.ERR_OK {
+		return 0, GoError(err)
 	}
-	return f.rwc.Write(out)
+	return len(out), nil
 }

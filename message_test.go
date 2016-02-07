@@ -30,12 +30,23 @@ func TestMessage(t *testing.T) {
 
 	ctx, cancel := context.RootContext()
 	defer cancel()
-	input, err := message.Append(ctx, s, nil)
+	inputGo, err := message.Append(ctx, s, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	m2, err := Read(input)
+	inputC, err := Write(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !bytes.Equal(inputGo, inputC) {
+		t.Error("Go write and C write differ")
+		t.Log("go ->", inputGo)
+		t.Log("c  ->", inputC)
+	}
+
+	m2, err := Read(inputGo)
 	if err != nil {
 		t.Fatal(err)
 	}

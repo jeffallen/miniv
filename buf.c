@@ -66,8 +66,13 @@ void bufDump(const buf_t buf) {
 
 buf_t bufFromString(const char *str) {
   buf_t ret;
-  ret.len = strlen(str);
-  ret.buf = (unsigned char *)(uintptr_t)str;
+  if (! str) {
+    ret.len = 0;
+    ret.buf = NULL;
+  } else {
+    ret.len = strlen(str);
+    ret.buf = (unsigned char *)(uintptr_t)str;
+  }
   return ret;
 }
 
@@ -105,7 +110,7 @@ err_t bufExpand(buf_t *b, unsigned long len) {
   return ERR_OK;
 }
 
-void bufFree(buf_t *b) {
+void bufDealloc(buf_t *b) {
   free(b->buf);
   b->len = 0;
   b->cap = 0;

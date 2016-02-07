@@ -19,14 +19,9 @@ import (
 
 func Read(in []byte) (message.Message, error) {
 	m := C.messageNew()
-	defer C.free(unsafe.Pointer(m))
+	defer C.messageFree(m)
 
-	var buf C.buf_t
-	buf.buf = (*C.uchar)(ptr(in))
-	buf.len = C.ulong(len(in))
-	buf.cap = C.ulong(cap(in))
-
-	err := C.messageRead(buf, m)
+	err := C.messageRead(toBuf_t(in), m)
 	if err != C.ERR_OK {
 		return nil, GoError(err)
 	}
@@ -53,6 +48,36 @@ func Read(in []byte) (message.Message, error) {
 	return nil, nil
 }
 
+func Write(m message.Message) ([]byte, error) {
+	var b C.buf_t
+	m2 := C.messageNew()
+
+	switch m1 := m.(type) {
+	case *message.Setup:
+		m2.mtype = C.Setup
+		s := (*C.struct_Setup)(unsafe.Pointer(ptr(m2.u[:])))
+		s.ver_min = C.uint32_t(m1.Versions.Min)
+		s.ver_max = C.uint32_t(m1.Versions.Max)
+		for i, x := range m1.PeerNaClPublicKey {
+			s.PeerNaClPublicKey[i] = C.uchar(x)
+		}
+		s.mtu = C.uint64_t(m1.Mtu)
+		s.sharedTokens = C.uint64_t(m1.SharedTokens)
+	default:
+		panic("not impl yet")
+	}
+
+	err := C.messageAppend(m2, &b)
+	if err != C.ERR_OK {
+		return nil, GoError(err)
+	}
+
+	out := C.GoBytes(unsafe.Pointer(b.buf), C.int(b.len))
+	C.bufDealloc(&b)
+	return out, nil
+}
+
+// Find the pointer to the underlying data for slice in.
 func ptr(in []byte) unsafe.Pointer {
 	hdrp := (*reflect.SliceHeader)(unsafe.Pointer(&in))
 	return unsafe.Pointer(hdrp.Data)

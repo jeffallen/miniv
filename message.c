@@ -8,7 +8,20 @@
 #include "miniv.h"
 
 // for debug
-//#include <stdio.h>
+#include <stdio.h>
+
+const char *messageTypeName(MessageType m) {
+  static const char *names[] = {
+    "HealthCheckReply", "HealthCheckRequest", "Data", "Release",
+    "OpenFlow", "Auth", "AckLameDuck", "EnterLameDuck", "TearDown",
+    "Setup",
+  };
+
+  if (m > lowestMessageType && m < Invalid) {
+    return names[m-lowestMessageType-1];
+  }
+  return "Invalid";
+}
 
 static MessageType messageType(unsigned char in) {
   MessageType m = in;
@@ -158,7 +171,7 @@ static err_t messageReadSetup(buf_t in, struct Setup *s) {
       break;
     }
   err:
-    bufFree(&payload);
+    bufDealloc(&payload);
   }
 
   return err;
@@ -180,7 +193,7 @@ err_t messageRead(const buf_t in, struct Message *m) {
   case Setup:
     return messageReadSetup(b, &m->u.Setup);
   default:
-      return ERR_BADMSG;
+      return ERR_OK;
     }
 }
 
@@ -197,12 +210,13 @@ static err_t writeVarUint64(buf_t *to, uint64_t u) {
   if (u <= 0x7f) {
       return bufAppendChar(to, (unsigned char)u);
   }
+  
   int shift = 56;
   unsigned char l = 7;
   for (; shift >= 0 && ((u>>shift)&0xff) == 0; shift -= 8, l--) {
   }
   bufAppendChar(to, 0xff-l);
-  for (; shift >= 0; shift--) {
+  for (; shift >= 0; shift -= 8) {
     bufAppendChar(to, (u>>shift & 0xff));
   }
   return ERR_OK;
@@ -223,12 +237,6 @@ static err_t appendSetupOption(SetupOption opt, const buf_t data, buf_t *to) {
   return err;
 }
 
-static err_t appendSetupVarUint64(SetupOption opt, uint64_t v, buf_t *to) {
-  err_t err = writeVarUint64(to, opt); ck();
-  err = writeVarUint64(to, v); ck();
-  return err;
-}
-
 static err_t messageAppendSetup(struct Setup *s, buf_t *to) {
   err_t err = bufAppendChar(to, Setup); ck();
   err = writeVarUint64(to, s->ver_min); ck();
@@ -239,16 +247,26 @@ static err_t messageAppendSetup(struct Setup *s, buf_t *to) {
   buf_t buf = { .buf = s->PeerNaClPublicKey, .len = 32 };
   err = appendSetupOption(peerNaClPublicKeyOption, buf, to); ck();
 
-  err = appendSetupOption(peerRemoteEndpointOption,
-			  bufFromString(s->PeerRemoteEndpoint), to); ck();
-  err = appendSetupOption(peerLocalEndpointOption,
-			  bufFromString(s->PeerLocalEndpoint), to); ck();
-
+  if (s->PeerRemoteEndpoint) {
+    err = appendSetupOption(peerRemoteEndpointOption,
+			    bufFromString(s->PeerRemoteEndpoint), to); ck();
+  }
+  if (s->PeerLocalEndpoint) {
+    err = appendSetupOption(peerLocalEndpointOption,
+			    bufFromString(s->PeerLocalEndpoint), to); ck();
+  }
+  
   if (s->mtu != 0) {
-    err = appendSetupVarUint64(mtuOption, s->mtu, to); ck();
+    unsigned char space[9];
+    buf_t tmp = { .buf = space, .len = 0, .cap = sizeof(space) };
+    err = writeVarUint64(&tmp, s->mtu); ck();
+    err = appendSetupOption(mtuOption, tmp, to); ck();
   }
   if (s->sharedTokens != 0) {
-    err = appendSetupVarUint64(sharedTokensOption, s->sharedTokens, to); ck();
+    unsigned char space[9];
+    buf_t tmp = { .buf = space, .len = 0, .cap = sizeof(space) };
+    err = writeVarUint64(&tmp, s->sharedTokens); ck();
+    err = appendSetupOption(sharedTokensOption, tmp, to); ck();
   }
   // uninterpreted options not stored yet
   
@@ -264,7 +282,7 @@ err_t messageAppend(struct Message *m, buf_t *to) {
   case Setup:
     return messageAppendSetup(&m->u.Setup, to);
   default:
-    return ERR_BADMSG;
+    return ERR_OK;
   }
 }
 

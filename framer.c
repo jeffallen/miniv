@@ -6,6 +6,7 @@
 
 #include <sys/types.h>
 #include <unistd.h>
+#include <sys/uio.h>
 
 static const unsigned int maxPacketSize = 0xffffff;
 
@@ -20,29 +21,20 @@ err_t frameReadLen(int fd, unsigned long *len) {
   return ERR_OK;
 }
 
-err_t frameWriteLen(int fd, unsigned long len) {
+err_t frameWrite(int fd, buf_t b) {
   unsigned char dst[3];
-  
-  len = maxPacketSize - len;
+  unsigned long len = maxPacketSize - b.len;
   dst[0] = (len & 0xff0000) >> 16;
   dst[1] = (len & 0x00ff00) >> 8;
   dst[2] = len & 0x0000ff;
 
-  ssize_t n = write(fd, dst, 3);
-  if (n != 3) {
-    return ERR_CONNECTION;
-  }
-  return ERR_OK;
-}
-
-err_t frameWrite(int fd, buf_t *b) {
-  err_t err = frameWriteLen(fd, b->len);
-  if (err != ERR_OK) {
-    return err;
-  }
+  struct iovec iov[2] = {
+    { .iov_base = dst, .iov_len = 3 },
+    { .iov_base = b.buf, .iov_len = b.len }
+  };
   
-  ssize_t n = write(fd, b->buf, b->len);
-  if ((unsigned long)n != b->len) {
+  ssize_t n = writev(fd, iov, 2);
+  if (n < 0) {
     return ERR_CONNECTION;
   }
   return ERR_OK;

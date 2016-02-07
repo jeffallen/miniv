@@ -37,17 +37,18 @@ int main(int argc, char **argv) {
   
   host = NULL; portstr = NULL; free(name);
 
-  // Talk to the server!
-  // a hack until we are ready do send our own setup...
-  bufExpand(&c->frame, 16);
-  bufAppend(&c->frame, bufFromString("Hello?"));
-  ckerr("write first frame", frameWrite(c->fd, &c->frame));
-
-  ckerr("read frame", connectionReadFrame(c));
-  bufDump(c->frame);
-
-  // Whoo hoo!!
-
-  close(c->fd);
+  connectionHandshake(c);
+  
+  while (1) {
+    struct Message m;
+    ckerr("read frame", connectionReadFrame(c));
+    ckerr("decode message", messageRead(c->frame, &m));
+    printf(" -> %s\n", messageTypeName(m.mtype));
+    if (m.mtype == Setup) {
+      printf(" public key: \n");
+      buf_t key = { .buf = m.u.Setup.PeerNaClPublicKey, .len = 32 };
+      bufDump(key);
+    }
+  }
 }
 

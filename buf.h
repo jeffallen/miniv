@@ -15,8 +15,10 @@ typedef struct {
 void bufDump(const buf_t buf);
 
 // bufFree deallocates the underlying buffer and sets
-// len and cap to 0.
-void bufFree(buf_t *buf);
+// len and cap to 0. The buf_t remains allocated, it is the
+// caller's responsibility to deallocate it, if it came from
+// the heap.
+void bufDealloc(buf_t *buf);
 
 err_t bufExpand(buf_t *b, unsigned long len);
 unsigned long bufRemaining(buf_t *b);

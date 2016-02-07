@@ -15,5 +15,4 @@ struct connection {
 err_t connectionEnsureFrame(struct connection *c, unsigned long len);
 err_t connectionReadFrame(struct connection *c);
 err_t connectionOpen(const char *hostname, uint16_t port, struct connection *c);
-
-
+err_t connectionHandshake(struct connection *c);
