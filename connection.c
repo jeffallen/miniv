@@ -7,6 +7,10 @@
 #include <netinet/in.h>
 #include <netdb.h> 
 #include <unistd.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #include "miniv.h"
 #include "crypto_box.h"
@@ -115,7 +119,7 @@ err_t connectionOpen(const char *hostname, uint16_t port, struct connection *c) 
   /* build the server's Internet address */
   memset(&sa_in, 0, sizeof(sa_in));
   sa_in.sin_family = AF_INET;
-  memcpy(server->h_addr, &sa_in.sin_addr.s_addr, server->h_length);
+  memcpy(server->h_addr_list[0], &sa_in.sin_addr.s_addr, server->h_length);
   sa_in.sin_port = htons(port);
   
   /* connect: create a connection with the server */
@@ -180,27 +184,42 @@ err_t connectionHandshake(struct connection *c) {
   return ERR_OK;
 }
 
-/*
-static err_t queueMessage(struct connection *c, struct Message *m) {
-  return queueAppend(&c->q, (const unsigned char *)m);
-}
-*/
+// This stupid stuff is needed by libnacl on Linux, and apparently doesn't
+// hurt anything on MacOS.
 
-/*
-  // read remote auth message
-  struct Message rAuthM = {};
-  while (1) {
-    err = connectionReadFrame(c); ck();
-    err = messageRead(c->frame, &rAuthM); ck();
+static int fd = -1;
 
-    if (rAuthM.mtype == Auth) {
-      break;
+void randombytes(unsigned char *x,unsigned long long xlen) {
+  ssize_t i;
+  
+  if (fd == -1) {
+    for (;;) {
+      fd = open("/dev/urandom",O_RDONLY);
+      if (fd != -1) break;
+      sleep(1);
+    }
+  }
+
+  while (xlen > 0) {
+    if (xlen < 1048576) i = (ssize_t)xlen; else i = 1048576;
+    
+    i = read(fd,x,(size_t)i);
+    if (i < 1) {
+      sleep(1);
+      continue;
     }
     
-    // postpone non-auth messages to deal with later
-    struct Message *m = messageNew();
-    *m = rAuthM;
-    queueMessage(c, m);
+    x += i;
+    xlen -= (unsigned long long)i;
   }
-  bufDump("auth frame", c->frame);
-*/
+}
+
+int randombytes_close(void) {
+  int rc = -1;
+  if(fd != -1 && close(fd) == 0) {
+    fd = -1;
+    rc = 0;
+  }
+  return rc;
+}
+

@@ -4,9 +4,8 @@
 
 package miniv
 
-/*
-#include "miniv.h"
-*/
+// #cgo CFLAGS: -I/usr/include/nacl
+// #include "miniv.h"
 import "C"
 
 import (

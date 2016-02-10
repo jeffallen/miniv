@@ -4,11 +4,10 @@
 
 package miniv
 
-/*
-#include "miniv.h"
-#include <stdlib.h>
-#include <string.h>
-*/
+// #cgo CFLAGS: -I/usr/include/nacl
+// #include "miniv.h"
+// #include <stdlib.h>
+// #include <string.h>
 import "C"
 import "unsafe"
 

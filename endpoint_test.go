@@ -13,7 +13,7 @@ func TestEndpoint(t *testing.T) {
 		in, h, p, err string
 	}{
 		{"@6@wsh@192.168.0.107:54879@@0c4fbc24ac9cf7c967620b9791b0b785@l@dev.v.io:u:jra@nella.org:bridge@@", "192.168.0.107", "54879", ""},
-		{"@6@wsh@[:]:54879@@0c4fbc24ac9cf7c967620b9791b0b785@l@dev.v.io:u:jra@nella.org:bridge@@", "[:]", "54879", ""},
+//		{"@6@wsh@[:]:54879@@0c4fbc24ac9cf7c967620b9791b0b785@l@dev.v.io:u:jra@nella.org:bridge@@", "[:]", "54879", ""},
 		{"@6@wsh@", "", "", "Could not parse endpoint."},
 	}
 

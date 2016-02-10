@@ -1,0 +1,19 @@
+sudo: required
+dist: trusty
+
+language: go
+
+go:
+  - 1.5.3
+
+before_install:
+  - sudo apt-get update -qq
+  - sudo apt-get install -qq libnacl-dev cmake 
+
+install:
+  - go get -t ./...
+  - go test -v -tags noopenssl
+  - mkdir obj
+  - cd obj
+  - cmake ..
+  - make

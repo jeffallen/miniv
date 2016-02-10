@@ -5,12 +5,14 @@
 cmake_minimum_required(VERSION 2.8)
 project (miniv)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Weverything -Wno-padded \
-		  -Wno-switch-enum -Wno-covered-switch-default \
-		  -Wno-gnu-empty-initializer -Werror ${CMAKE_C_FLAGS_DEBUG}")
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Weverything -Wno-padded -Wno-switch-enum -Wno-covered-switch-default -Wno-gnu-empty-initializer -Werror ${CMAKE_C_FLAGS_DEBUG}")
+elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -Wno-format ${CMAKE_C_FLAGS_DEBUG}")
+endif()
 
 find_library(nacl_lib nacl)
-find_path(nacl_inc crypto_box.h)
+find_path(nacl_inc crypto_box.h PATHS /usr/include/nacl)
 include_directories(${nacl_inc})
 
 set(cfiles

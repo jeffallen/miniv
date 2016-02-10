@@ -43,3 +43,7 @@ err_t connectionWriteFrame(struct connection *c, buf_t out);
 err_t connectionOpen(const char *hostname, uint16_t port, struct connection *c);
 
 err_t connectionHandshake(struct connection *c);
+
+// Required by libnacl.
+void randombytes(unsigned char *x,unsigned long long xlen);
+int randombytes_close(void);

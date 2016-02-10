@@ -4,9 +4,8 @@
 
 package miniv
 
-/*
-#include "miniv.h"
-*/
+// #cgo CFLAGS: -I/usr/include/nacl -std=c99
+// #include "miniv.h"
 import "C"
 
 import (
@@ -46,7 +45,6 @@ func (c *connection) handshakeAndReceive() ([]byte, error) {
 
 		// send some data towards c1
 		hello := []byte("hello from c2")
-		log.Println("trying to write")
 		err = C.connectionWriteFrame(&c.c2, toBuf_t(hello))
 		if err != C.ERR_OK {
 			log.Fatal("c2 write:", GoError(err))
@@ -57,7 +55,6 @@ func (c *connection) handshakeAndReceive() ([]byte, error) {
 		return nil, GoError(err)
 	}
 
-	log.Println("trying to read")
 	err = C.connectionReadFrame(&c.c1)
 	if err != C.ERR_OK {
 		return nil, GoError(err)

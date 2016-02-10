@@ -7,6 +7,8 @@ necessary to do an RPC in C.
 The target systems are those that are too small to run Go, but
 big enough to run C and a networking stack.
 
+[![Build Status](https://travis-ci.org/jeffallen/miniv.svg?branch=master)](https://travis-ci.org/jeffallen/miniv)
+
 Go and cgo
 ----------
 

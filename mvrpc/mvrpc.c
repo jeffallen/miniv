@@ -6,6 +6,10 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#ifdef __linux__
+// to get strdup on linux (for the love of God, why?)
+#define __USE_BSD
+#endif
 #include <string.h>
 #include <unistd.h>
 
