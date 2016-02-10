@@ -19,7 +19,8 @@ static void ckerr(const char *what, err_t err) {
 int main(int argc, char **argv) {
   struct connection c0 = {};
   struct connection *c = &c0;
-
+  connectionNew(c);
+  
   if (argc != 2) {
     fprintf(stderr, "usage: %s endpoint-name\n", argv[0]);
     exit(1);
@@ -37,17 +38,27 @@ int main(int argc, char **argv) {
   
   host = NULL; portstr = NULL; free(name);
 
-  connectionHandshake(c);
+  ckerr("handshake:", connectionHandshake(c));
   
   while (1) {
     struct Message m;
     ckerr("read frame", connectionReadFrame(c));
     ckerr("decode message", messageRead(c->frame, &m));
-    printf(" -> %s\n", messageTypeName(m.mtype));
-    if (m.mtype == Setup) {
-      printf(" public key: \n");
-      buf_t key = { .buf = m.u.Setup.PeerNaClPublicKey, .len = 32 };
-      bufDump(key);
+    printf(" -> (%x)%s\n", m.mtype, messageTypeName(m.mtype));
+    switch (m.mtype) {
+    case Auth:
+      printf("    blessings: %lld discharge: %lld\n", m.u.Auth.BlessingsKey, m.u.Auth.DischargeKey);
+      bufDump("    signature Purpose:", m.u.Auth.ChannelBinding.Purpose);
+      bufDump("    signature R:", m.u.Auth.ChannelBinding.R);
+      bufDump("    signature S:", m.u.Auth.ChannelBinding.S);
+      break;
+    case Data:
+      printf("    ID: %lld\n", m.u.Data.id);
+      printf("    flags: %lld\n", m.u.Data.flags);
+      bufDump("    payload:", m.u.Data.payload);
+      break;
+    default:
+      break;
     }
   }
 }

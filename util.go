@@ -18,7 +18,7 @@ func GoError(e C.err_t) error {
 func toBuf_t(in []byte) C.buf_t {
 	var buf C.buf_t
 	buf.buf = (*C.uchar)(ptr(in))
-	buf.len = C.ulong(len(in))
-	buf.cap = C.ulong(cap(in))
+	buf.len = C.ulong_t(len(in))
+	buf.cap = C.ulong_t(cap(in))
 	return buf
 }

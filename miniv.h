@@ -4,6 +4,8 @@
 
 #pragma once
 
+typedef unsigned long ulong_t;
+
 typedef int err_t;
 const char *errstr(err_t err);
 
@@ -20,10 +22,23 @@ enum {
   ERR_ENDPOINT, // Could not parse endpoint.
   ERR_SOCKETCONNECT, // Could not connect.
   ERR_CONNECTION, // Connection broken.
+  ERR_HANDSHAKE, // Handshake failed.
+  ERR_UNBOX, // Failed to decrypt a message.
+  ERR_HASH, // Unknown hash algortihm.
+  ERR_BOX, // Failed to encrypt a message.
 };
+
+// A macro to hide boilerplate error checking.
+#if 1
+#include <stdio.h>
+#define ck(x) if (err != ERR_OK) { fprintf(stderr, "%s:%d err %s\n", __FILE__, __LINE__, errstr(err)); return err; }
+#else
+#define ck(x) if (err != ERR_OK) return err;
+#endif
 
 #include "buf.h"
 #include "connection.h"
 #include "framer.h"
 #include "endpoint.h"
 #include "message.h"
+#include "signature.h"

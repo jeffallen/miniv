@@ -23,6 +23,8 @@ static const char *errstrs[] = {
 [  ERR_ENDPOINT ] = "Could not parse endpoint.",
 [  ERR_SOCKETCONNECT ] = "Could not connect.",
 [  ERR_CONNECTION ] = "Connection broken.",
+[ ERR_HANDSHAKE ] = "Handshake failure.",
+[ ERR_UNBOX ] = "Failed to decrypt a message.",
 };
 static const int numerrs = sizeof(errstrs)/sizeof(const char *);
 

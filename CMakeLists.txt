@@ -7,7 +7,11 @@ project (miniv)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Weverything -Wno-padded \
 		  -Wno-switch-enum -Wno-covered-switch-default \
-		  -Wno-gnu-empty-initializer -Werror")
+		  -Wno-gnu-empty-initializer -Werror ${CMAKE_C_FLAGS_DEBUG}")
+
+find_library(nacl_lib nacl)
+find_path(nacl_inc crypto_box.h)
+include_directories(${nacl_inc})
 
 set(cfiles
 	buf.c
@@ -16,8 +20,11 @@ set(cfiles
 	err.c
 	message.c
 	framer.c
+	signature.c
 )
 add_library (miniv ${cfiles})
+target_link_libraries(miniv LINK_PUBLIC ${nacl_lib})
+
 target_include_directories (miniv PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_custom_target(gotest COMMAND go test -v ..)

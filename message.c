@@ -7,9 +7,6 @@
 
 #include "miniv.h"
 
-// for debug
-#include <stdio.h>
-
 const char *messageTypeName(MessageType m) {
   static const char *names[] = {
     "HealthCheckReply", "HealthCheckRequest", "Data", "Release",
@@ -36,9 +33,19 @@ struct Message *messageNew() {
 }
 
 void messageFree(struct Message *m) {
-  if (m->mtype == Setup) {
+  switch (m->mtype) {
+  case Setup:
     free(m->u.Setup.PeerRemoteEndpoint);
     free(m->u.Setup.PeerLocalEndpoint);
+    break;
+  case Data:
+    bufDealloc(&m->u.Data.payload);
+    break;
+  case Auth:
+    signatureDealloc(&m->u.Auth.ChannelBinding);
+    break;
+  default:
+    break;
   }
 }
 
@@ -90,11 +97,8 @@ static err_t readLenBytes(buf_t *in, buf_t *payload) {
     return ERR_SETUPOPTION;
   }
 
-  // Clear it and append to it, so that we reuse existing buf if it was already
-  // malloced.
-  payload->len = 0;
-  buf_t pl = { .buf = in->buf, .len = plen };
-  bufAppend(payload, pl);
+  // We reuse existing buf if it was already malloced.
+  bufCopy(payload, bufWrap(in->buf, plen));
 
   in->buf += payload->len;
   in->len -= payload->len;
@@ -177,12 +181,47 @@ static err_t messageReadSetup(buf_t in, struct Setup *s) {
   return err;
 }
 
+static err_t messageReadData(buf_t in, struct Data *s) {
+  err_t err = readVarUint64(&in, &s->id);
+  if (err != ERR_OK) {
+      return err;
+  }
+  err = readVarUint64(&in, &s->flags);
+  if (err != ERR_OK) {
+      return err;
+  }
+  bufCopy(&s->payload, in);
+  return ERR_OK;
+}
+
+static err_t messageReadAuth(buf_t in, struct Auth *a) {
+  err_t err = readVarUint64(&in, &a->BlessingsKey);
+  if (err != ERR_OK) {
+      return err;
+  }
+  err = readVarUint64(&in, &a->DischargeKey);
+  if (err != ERR_OK) {
+      return err;
+  }
+  readLenBytes(&in, &a->ChannelBinding.Purpose); ck();
+  
+  buf_t hash = {};
+  readLenBytes(&in, &hash); ck();
+  err = signatureSetHash(&a->ChannelBinding, hash); ck();
+  bufDealloc(&hash);
+  
+  readLenBytes(&in, &a->ChannelBinding.R); ck();
+  readLenBytes(&in, &a->ChannelBinding.S); ck();
+  return ERR_OK;
+}
+
 err_t messageRead(const buf_t in, struct Message *m) {
   if (!m || in.len < 1) {
     return ERR_PARAM;
   }
 
-  // take a copy to work on
+  // take a copy to work on (the underlying buffer it shared,
+  // just the pointer into it will be modified)
   buf_t b = in;
 
   m->mtype = messageType(b.buf[0]);
@@ -192,6 +231,10 @@ err_t messageRead(const buf_t in, struct Message *m) {
   switch (m->mtype) {
   case Setup:
     return messageReadSetup(b, &m->u.Setup);
+  case Data:
+    return messageReadData(b, &m->u.Data);
+  case Auth:
+    return messageReadAuth(b, &m->u.Auth);
   default:
       return ERR_OK;
     }
@@ -222,9 +265,6 @@ static err_t writeVarUint64(buf_t *to, uint64_t u) {
   return ERR_OK;
 }
 
-// A macro to hide boilerplate error checking.
-#define ck(x) if (err != ERR_OK) return err;
-
 static err_t appendLenBytes(const buf_t data, buf_t *to) {
   err_t err = writeVarUint64(to, data.len); ck();
   err = bufAppend(to, data);
@@ -244,8 +284,8 @@ static err_t messageAppendSetup(struct Setup *s, buf_t *to) {
 
   // in Vanadium, encoding these is optional, but since we
   // only implement RPC v14, I think we'll always have it.
-  buf_t buf = { .buf = s->PeerNaClPublicKey, .len = 32 };
-  err = appendSetupOption(peerNaClPublicKeyOption, buf, to); ck();
+  err = appendSetupOption(peerNaClPublicKeyOption,
+			  bufWrap(s->PeerNaClPublicKey, 32), to); ck();
 
   if (s->PeerRemoteEndpoint) {
     err = appendSetupOption(peerRemoteEndpointOption,

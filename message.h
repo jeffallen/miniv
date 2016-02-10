@@ -4,6 +4,7 @@
 
 #include <stdint.h>
 #include "miniv.h"
+#include "signature.h"
 #pragma once
 
 typedef enum {
@@ -44,20 +45,42 @@ struct Setup {
   uint64_t sharedTokens;
 };
 
+struct Data {
+  uint64_t id;
+  uint64_t flags;
+  buf_t payload;
+};
+
+struct Auth {
+  uint64_t BlessingsKey;
+  uint64_t DischargeKey;
+  struct Signature ChannelBinding;
+};
+
 struct Message {
   MessageType mtype;
   union {
     struct Setup Setup;
+    struct Data Data;
+    struct Auth Auth;
   } u;
 };
 
+// messageNew returns a new message, allocted from the heap. It is zeroed.
+// Once filled via messageRead, it must be deallocated using messageFree, then
+// the struct Message itself must be freed using free().
 struct Message *messageNew(void);
+
+// messageFree frees any allocated storage associated with the message. The
+// struct Message itself is not freed, and must be freed by the caller (or not
+// freed, if for example it was allocated on the stack).
 void messageFree(struct Message *);
 
 const char *messageTypeName(MessageType m);
 
 // messageRead deserializes a message out of buffer in into the structure pointed
-// to by m.
+// to by m. The structure MUST be zero-valued before the call.
 err_t messageRead(const buf_t in, struct Message *m);
 
+// messageAppend serializes a message onto the end of buffer to.
 err_t messageAppend(struct Message *m, buf_t *to);

@@ -58,9 +58,9 @@ static void hexDump (char *desc, void *addr, unsigned long len) {
     printf ("  %s\n", buff);
 }
 
-void bufDump(const buf_t buf) {
-  char desc[100];
-  sprintf(desc, "Buffer len=%ld, cap=%ld", buf.len, buf.cap);
+void bufDump(const char *what, const buf_t buf) {
+  char desc[1024];
+  sprintf(desc, "%s (len=%ld, cap=%ld)", what, buf.len, buf.cap);
   hexDump(desc, buf.buf, buf.len);
 }
 
@@ -96,6 +96,11 @@ err_t bufAppend(buf_t *b, buf_t in) {
   return ERR_OK;
 }
 
+err_t bufCopy(buf_t *dest, buf_t src) {
+  bufTruncate(dest);
+  return bufAppend(dest, src);
+}
+
 err_t bufExpand(buf_t *b, unsigned long len) {
   if (b->cap < len) {
     unsigned char *p = malloc(len);
@@ -122,3 +127,29 @@ unsigned long bufRemaining(buf_t *b) {
   }
   return b->cap - b->len;
 }
+
+buf_t bufWrap(void *p, unsigned long len) {
+  buf_t ret;
+  ret.buf = p;
+  ret.len = len;
+  ret.cap = len;
+  return ret;
+}
+
+void bufTruncate(buf_t *b) {
+  b->len = 0;
+}
+
+void queueInit(queue_t *q, ulong_t itemSize) {
+  bufTruncate(&q->buf);
+  q->itemSize = itemSize;
+}
+
+void queueDealloc(queue_t *q) {
+  bufDealloc(&q->buf);
+}
+
+err_t queueAppend(queue_t *q, const unsigned char *p) {
+  return bufAppend(&q->buf, bufWrap((void *)(uintptr_t)p, q->itemSize));
+}
+
