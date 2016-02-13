@@ -23,6 +23,7 @@ set(cfiles
 	message.c
 	framer.c
 	signature.c
+	vom.c
 )
 add_library (miniv ${cfiles})
 target_link_libraries(miniv LINK_PUBLIC ${nacl_lib})

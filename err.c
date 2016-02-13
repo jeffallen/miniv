@@ -5,10 +5,10 @@
 #include <stdio.h>
 #include "miniv.h"
 
-// This table is generated from err.h by hand using:
-//   awk -F// '/  ERR/ { err=$1; msg=$2;
+// This table is generated from miniv.h using:
+//   awk -F// '/^  ERR/ { err=$1; msg=$2;
 //     sub(/,/, "", err); sub(/^ /, "", msg);
-//     printf("[%s] = \"%s\",\n", err, msg)}' < err.h
+//     printf("[%s] = \"%s\",\n", err, msg)}' < miniv.h
 
 static const char *errstrs[] = {
 [  ERR_OK      ] = "No error.",
@@ -25,6 +25,10 @@ static const char *errstrs[] = {
 [  ERR_CONNECTION ] = "Connection broken.",
 [ ERR_HANDSHAKE ] = "Handshake failure.",
 [ ERR_UNBOX ] = "Failed to decrypt a message.",
+[ ERR_HASH ] = "Unknown hash algorithm.",
+[ ERR_BOX ] = "Failed to encrypt a message.",
+[ ERR_DECVOM ] = "Failed to decode a VOM.",
+[ ERR_DECVOM_MORE ] = "More data needed to decode VOM.",
 };
 static const int numerrs = sizeof(errstrs)/sizeof(const char *);
 

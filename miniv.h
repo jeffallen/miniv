@@ -26,10 +26,12 @@ enum {
   ERR_UNBOX, // Failed to decrypt a message.
   ERR_HASH, // Unknown hash algortihm.
   ERR_BOX, // Failed to encrypt a message.
+  ERR_DECVOM, // Failed to decode a VOM.
+  ERR_DECVOM_MORE, // VOM decoding is not done yet.
 };
 
 // A macro to hide boilerplate error checking.
-#if 1
+#ifndef NDEBUG
 #include <stdio.h>
 #define ck(x) if (err != ERR_OK) { fprintf(stderr, "%s:%d err %s\n", __FILE__, __LINE__, errstr(err)); return err; }
 #else
@@ -42,3 +44,4 @@ enum {
 #include "endpoint.h"
 #include "message.h"
 #include "signature.h"
+#include "vom.h"
