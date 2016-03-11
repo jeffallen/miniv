@@ -4,6 +4,7 @@
 
 #include "miniv.h"
 #pragma once
+#include <sys/types.h>
 
 typedef enum {
   vomVersion81 = 0x81,
