@@ -29,7 +29,7 @@ only the implementation in C, and all your tests in Go.
 And if you happened to have a copy of the official v.io
 Go code in your GOPATH, then you could even do something really
 snazzy: You can use the reference implementation to validate your
-new implementation. For an example, see flow/message/message_test.go
+new implementation. For an example, see message_test.go
 where we use [v.io/v23/flow/message](https://godoc.org/v.io/v23/flow/message)
 to serialize a message, and then we use our new implementation in C
 to deserialize it.
