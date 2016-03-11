@@ -33,9 +33,28 @@ static void eat(buf_t *in, ulong_t n) {
   }
 }
 
+err_t decodeString(buf_t *in, buf_t *v) {
+  vomControl ctl = controlNone;
+  uint64_t len;
+  err_t err = decodeVar128(in, &len, &ctl); ck();
+  if (ctl != controlNone) {
+    // unexpected control message here
+    err = ERR_DECVOM; ck();
+  }
+  
+  v->buf = in->buf;
+  v->len = len;
+  // TODO: buf needs a flag system to say, "this is a slice, don't realloc/dealloc"
+  v->cap = 0;
+
+  eat(in, len);
+  
+  return ERR_OK;
+}
+
 err_t decodeInt(buf_t *in, int *v) {
   vomControl ctl = controlNone;
-  uint64_t i;    
+  uint64_t i;
   err_t err = decodeVar128(in, &i, &ctl); ck();
   if (ctl != controlNone) {
     // unexpected control message here
@@ -47,7 +66,7 @@ err_t decodeInt(buf_t *in, int *v) {
 
 err_t decodeDouble(buf_t *in, double *v) {
   vomControl ctl = controlNone;
-  uint64_t uval;    
+  uint64_t uval;
   err_t err = decodeVar128(in, &uval, &ctl); ck();
   if (ctl != controlNone) {
     // unexpected control message here

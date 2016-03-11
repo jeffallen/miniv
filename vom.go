@@ -13,7 +13,9 @@ import "errors"
 
 var ErrNotEqual = errors.New("not equal")
 
-func decodeStruct(in []byte) (*testStruct, error) {
+func decodeStruct(in []byte) (testStruct, error) {
+	var zero testStruct
+
 	C.testStruct_register()
 
 	var d C.decoder_t
@@ -23,14 +25,18 @@ func decodeStruct(in []byte) (*testStruct, error) {
 	C.decoderFeed(&d, toBuf_t(in))
 	err := C.vomDecode(&d, &v, &done)
 	if err != C.ERR_OK {
-		return nil, GoError(err)
+		return zero, GoError(err)
 	}
 
 	if v.ptr == nil {
-		return nil, errors.New("expected v.ptr not nil")
+		return zero, errors.New("expected v.ptr not nil")
 	}
 
 	ts := (*C.struct_testStruct)((v.ptr))
 
-	return &testStruct{A: int(ts.A), B: float64(ts.B)}, nil
+	return testStruct{
+		A:     int(ts.A),
+		B:     float64(ts.B),
+		Inner: inner{String: bufToString(ts.Inner.String)},
+	}, nil
 }

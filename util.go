@@ -8,10 +8,18 @@ package miniv
 // #include "miniv.h"
 import "C"
 
-import "errors"
+import (
+	"errors"
+	"unsafe"
+)
 
 func GoError(e C.err_t) error {
 	return errors.New(C.GoString(C.errstr(e)))
+}
+
+// Find the pointer to the underlying data for slice in.
+func ptr(in []byte) unsafe.Pointer {
+	return unsafe.Pointer(&in[0])
 }
 
 func toBuf_t(in []byte) C.buf_t {
@@ -20,4 +28,8 @@ func toBuf_t(in []byte) C.buf_t {
 	buf.len = C.ulong_t(len(in))
 	buf.cap = C.ulong_t(cap(in))
 	return buf
+}
+
+func bufToString(buf C.buf_t) string {
+	return C.GoStringN((*C.char)(unsafe.Pointer(buf.buf)), C.int(buf.len))
 }

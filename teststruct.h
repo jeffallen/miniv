@@ -7,9 +7,14 @@
 
 #include "miniv.h"
 
+struct inner {
+  buf_t String;
+};
+  
 struct testStruct {
   int A;
   double B;
+  struct inner Inner;
 };
   
 void testStruct_register();

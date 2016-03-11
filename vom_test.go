@@ -11,13 +11,18 @@ import (
 	"v.io/v23/vom"
 )
 
+type inner struct {
+	String string
+}
+
 type testStruct struct {
-	A int
-	B float64
+	A     int
+	B     float64
+	Inner inner
 }
 
 func TestVomStruct(t *testing.T) {
-	ts0 := testStruct{A: 1, B: 3.14}
+	ts0 := testStruct{A: 1, B: 3.14, Inner: inner{String: "Hello."}}
 	buf := &bytes.Buffer{}
 	e := vom.NewEncoder(buf)
 
@@ -28,9 +33,10 @@ func TestVomStruct(t *testing.T) {
 
 	ts1, err := decodeStruct(buf.Bytes())
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
-	if ts0 != *ts1 {
+
+	if ts0 != ts1 {
 		t.Error(ts0, "does not equal", ts1)
 	}
 }

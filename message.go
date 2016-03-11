@@ -9,7 +9,6 @@ package miniv
 // #include "miniv.h"
 import "C"
 import (
-	"reflect"
 	"unsafe"
 
 	"v.io/v23/flow/message"
@@ -74,10 +73,4 @@ func Write(m message.Message) ([]byte, error) {
 	out := C.GoBytes(unsafe.Pointer(b.buf), C.int(b.len))
 	C.bufDealloc(&b)
 	return out, nil
-}
-
-// Find the pointer to the underlying data for slice in.
-func ptr(in []byte) unsafe.Pointer {
-	hdrp := (*reflect.SliceHeader)(unsafe.Pointer(&in))
-	return unsafe.Pointer(hdrp.Data)
 }

@@ -70,6 +70,7 @@ err_t vomRegister(buf_t name, ssize_t sz, err_t (*decoder)(buf_t, void *));
 // the structure decoders.
 
 err_t decodeByte(buf_t *in, unsigned char *v);
+err_t decodeString(buf_t *in, buf_t *v);
 err_t decodeInt(buf_t *in, int *v);
 err_t decodeDouble(buf_t *in, double *v);
 err_t decodeVar128(buf_t *in, uint64_t *v, vomControl *ctl);
