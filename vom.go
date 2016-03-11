@@ -13,6 +13,16 @@ import "errors"
 
 var ErrNotEqual = errors.New("not equal")
 
+type inner struct {
+	String string
+}
+
+type testStruct struct {
+	A     int
+	B     float64
+	Inner inner
+}
+
 func decodeStruct(in []byte) (testStruct, error) {
 	var zero testStruct
 
