@@ -60,7 +60,7 @@ static void hexDump (char *desc, void *addr, unsigned long len) {
 
 void bufDump(const char *what, const buf_t buf) {
   char desc[1024];
-  sprintf(desc, "%s (len=%ld, cap=%ld)", what, buf.len, buf.cap);
+  sprintf(desc, "%s (len=%lu, cap=%lu)", what, buf.len, buf.cap);
   hexDump(desc, buf.buf, buf.len);
 }
 
@@ -153,3 +153,9 @@ err_t queueAppend(queue_t *q, const unsigned char *p) {
   return bufAppend(&q->buf, bufWrap((void *)(uintptr_t)p, q->itemSize));
 }
 
+bool bufEqual(buf_t b1, buf_t b2) {
+  if (b1.len != b2.len) {
+    return false;
+  }
+  return (memcmp(b1.buf, b2.buf, b1.len) == 0);
+}

@@ -14,5 +14,7 @@ func TestConnectionPair(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log("got ", string(out))
+	if string(out) != "hello from c2" {
+		t.Error("unexpected: got ", string(out))
+	}
 }

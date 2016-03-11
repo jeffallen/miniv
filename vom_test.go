@@ -11,7 +11,31 @@ import (
 	"v.io/v23/vom"
 )
 
-func TestVom(t *testing.T) {
+type testStruct struct {
+	A int
+	B float64
+}
+
+func TestVomStruct(t *testing.T) {
+	ts0 := testStruct{A: 1, B: 3.14}
+	buf := &bytes.Buffer{}
+	e := vom.NewEncoder(buf)
+
+	err := e.Encode(ts0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ts1, err := decodeStruct(buf.Bytes())
+	if err != nil {
+		t.Error(err)
+	}
+	if ts0 != *ts1 {
+		t.Error(ts0, "does not equal", ts1)
+	}
+}
+
+func TestVomPrim(t *testing.T) {
 	tests := []interface{}{
 		true, false,
 		byte(0), byte('V'), byte(0xff),
@@ -26,9 +50,8 @@ func TestVom(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		t.Log(x, "encoded as", buf.Bytes())
 
-		err = decodeAndCheck(buf.Bytes(), x)
+		err = decodeAndCheckPrim(buf.Bytes(), x)
 		if err != nil {
 			t.Fatal(err)
 		}

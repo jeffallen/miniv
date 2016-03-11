@@ -9,11 +9,12 @@ typedef enum {
   vomVersion81 = 0x81,
 } vomVersion;
 
-// These are the built-in type id's, from the VOM spec.
+// These are the primitive type id's, from the VOM spec.
 typedef enum {
   tidBool = 1,
   tidByte = 2,
   tidInt64 = 9,
+  tidString = 40,
 } vomType;
 
 typedef enum {
@@ -23,9 +24,15 @@ typedef enum {
 } vomControl;
 
 typedef struct {
+  // buf is storage space for a sequence of cell_t records and their underlying
+  // data. This makes deallocating value_t simply bufDealloc(v.buf). It also makes
+  // it easy to account for (and possibly limit) the entire memory consumption
+  // of a given value_t.
   buf_t buf;
+  void *ptr;
 } value_t;
 
+// A value_t is a (possibly recursive) collection of cell_t's.
 typedef struct {
   uint64_t ctype;
   union {
@@ -35,23 +42,51 @@ typedef struct {
   } u;
 } cell_t;
 
-struct decoder {
+// TODO: dynamically allocate typedefn table
+enum {
+  utidBase = 41,
+  utidMax = 100,
+};
+
+struct utype {
+  buf_t tname;
+  ssize_t sz;
+  err_t (*decoder)(buf_t, void *);
+};
+
+typedef struct {
   buf_t in;
   buf_t left;  // a slice on in showing what's left to be processed. Do not dealloc.
   vomVersion version;
-  int64_t curTid;
-};
+  int64_t curTid; // 0 means "not known yet"
+  struct utype *utypes[utidMax];
+} decoder_t;
 
-// vomDecode decodes the VOM in "in" into the vom_t vout.
-// vout must be zeroed before using vomZero.
-err_t vomDecode(struct decoder *dec, value_t *vout, bool *done);
+// vomDecode decodes the VOM previously fed into the decoder into the vom_t vout.
+// vout must be zeroed before using vomZero. On ERR_DEC_MORE, feed more input
+// into dec and call vomDecode again.
+err_t vomDecode(decoder_t *dec, value_t *vout, bool *done);
 
-void decoderDealloc(struct decoder *dec);
-err_t decoderFeed(struct decoder *dec, buf_t in);
+void decoderDealloc(decoder_t *dec);
 
-// vomZero ensures that the vom_t is ready to be filled with a result.
-// It does not deallocate underlying storage. For that, see vomDealloc.
+// decoderFeed copies bytes into the decoder's buffer.
+err_t decoderFeed(decoder_t *dec, buf_t in);
+
+// valueZero ensures that the vom_t is ready to be filled with a result.
+// It does not deallocate underlying storage. For that, see valueDealloc.
 void valueZero(value_t *v);
 
 cell_t *valueGetCell(value_t *v, ulong_t cellnum);
+
+// vomRegister registers a given type, so that vomDecode will
+// know which callbacks to use to encode and decode it.
+err_t vomRegister(buf_t name, ssize_t sz, err_t (*decoder)(buf_t, void *));
+
+// Here are all the primitive decoders that will be called by
+// the structure decoders.
+
+err_t decodeByte(buf_t *in, unsigned char *v);
+err_t decodeInt(buf_t *in, int *v);
+err_t decodeDouble(buf_t *in, double *v);
+err_t decodeVar128(buf_t *in, uint64_t *v, vomControl *ctl);
 

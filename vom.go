@@ -6,6 +6,7 @@ package miniv
 
 // #cgo CFLAGS: -I/usr/include/nacl -std=c99
 // #include "miniv.h"
+// #include "teststruct.h"
 import "C"
 
 import (
@@ -16,18 +17,44 @@ import (
 
 var ErrNotEqual = errors.New("not equal")
 
-func decodeAndCheck(in []byte, vin interface{}) error {
+func decodeStruct(in []byte) (*testStruct, error) {
+	C.testStruct_register()
+
+	var d C.decoder_t
 	var v C.value_t
-	var d C.struct_decoder
 	var done C._Bool
+
+	C.decoderFeed(&d, toBuf_t(in))
+	err := C.vomDecode(&d, &v, &done)
+	if err != C.ERR_OK {
+		return nil, GoError(err)
+	}
+
+	if v.ptr == nil {
+		return nil, errors.New("expected v.ptr not nil")
+	}
+
+	ts := (*C.struct_testStruct)((v.ptr))
+
+	return &testStruct{A: int(ts.A), B: float64(ts.B)}, nil
+}
+
+func decodeAndCheckPrim(in []byte, vin interface{}) error {
+	var v C.value_t
+	var d C.decoder_t
+	var done C._Bool
+
 	C.decoderFeed(&d, toBuf_t(in))
 	err := C.vomDecode(&d, &v, &done)
 	if err != C.ERR_OK {
 		return GoError(err)
 	}
 
+	if !done {
+		return errors.New("done is not set")
+	}
+
 	c := C.valueGetCell(&v, 0)
-	//	fmt.Println(c)
 
 	switch c.ctype {
 	case C.tidBool:

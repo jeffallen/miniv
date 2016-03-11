@@ -5,32 +5,95 @@
 #include "miniv.h"
 #include <stdio.h>
 
-static void eat(struct decoder *dec, ulong_t n) {
-  //bufDump("eat", dec->left);
-  dec->left.buf += n;
-  dec->left.len -= n;
+static struct utype knownUserTypes[utidMax];
+static int nKnownUserTypes = 0;
+
+static int64_t decodeSign(uint64_t in) {
+  if ((in & 1) == 0) {
+    return in>>1;
+  }
+  return ~(in>>1);
 }
 
-static err_t readByte(struct decoder *dec, unsigned char *v) {
-  if (dec->left.len == 0) {
-    return ERR_DECVOM;
+static void eat(buf_t *in, ulong_t n) {
+  /*
+  char buf[100];
+  snprintf(buf, sizeof(buf), "eat %lu", n);
+  bufDump(buf, *in);
+  */
+
+  if (n > in->len) {
+    // Do not allow underflow
+    printf("underflow!\n");
+    in->buf += in->len;
+    in->len = 0;
+  } else {
+    in->buf += n;
+    in->len -= n;
   }
-  *v = dec->left.buf[0];
-  eat(dec, 1);
+}
+
+err_t decodeInt(buf_t *in, int *v) {
+  vomControl ctl = controlNone;
+  uint64_t i;    
+  err_t err = decodeVar128(in, &i, &ctl); ck();
+  if (ctl != controlNone) {
+    // unexpected control message here
+    err = ERR_DECVOM; ck();
+  }
+  *v = (int)decodeSign(i);
   return ERR_OK;
 }
 
-static err_t readVar128(struct decoder *dec, uint64_t *v, vomControl *ctl) {
+err_t decodeDouble(buf_t *in, double *v) {
+  vomControl ctl = controlNone;
+  uint64_t uval;    
+  err_t err = decodeVar128(in, &uval, &ctl); ck();
+  if (ctl != controlNone) {
+    // unexpected control message here
+    err = ERR_DECVOM; ck();
+  }
+
+  uint64_t ieee = (uval&0xff)<<56 |
+    (uval&0xff00)<<40 |
+    (uval&0xff0000)<<24 |
+    (uval&0xff000000)<<8 |
+    (uval&0xff00000000)>>8 |
+    (uval&0xff0000000000)>>24 |
+    (uval&0xff000000000000)>>40 |
+    (uval&0xff00000000000000)>>56;
+
+  union {
+    uint64_t u64;
+    double d;
+  } u;
+
+  u.u64 = ieee;
+  *v = u.d;
+  
+  return ERR_OK;
+}
+
+err_t decodeByte(buf_t *in, unsigned char *v) {
+  if (in->len == 0) {
+    return ERR_DECVOM;
+  }
+  *v = in->buf[0];
+  eat(in, 1);
+  return ERR_OK;
+}
+
+err_t decodeVar128(buf_t *in, uint64_t *v, vomControl *ctl) {
   *ctl = controlNone;
   
-  if (dec->left.len == 0) {
+  if (in->len == 0) {
     return ERR_DECVOM;
   }
 
-  unsigned char uc = dec->left.buf[0];
+  unsigned char uc = in->buf[0];
   if (uc < 128) {
     *v = uc;
-    eat(dec, 1);
+    eat(in, 1);
     return ERR_OK;
   }
 
@@ -44,22 +107,23 @@ static err_t readVar128(struct decoder *dec, uint64_t *v, vomControl *ctl) {
 
     // check that there is enough data to read (we already read data[0]
     // into uc, above, thus len+1.
-    if (dec->left.len < len+1) {
+    if (in->len < len+1) {
       return ERR_DECVOM_MORE;
     }
 
     uint64_t v0 = 0;
     for (ulong_t i = 0; i < len; i++) {
       v0 <<= 8;
-      v0 |= dec->left.buf[i+1];
+      v0 |= in->buf[i+1];
     }
     *v = v0;
-    eat(dec, len+1);
+    eat(in, len+1);
     return ERR_OK;
   }
 
   // it is a control point
-  eat(dec, 1);
+  eat(in, 1);
+  *v = 0;
   *ctl = uc;
   switch (uc) {
   case 0xe0:
@@ -72,7 +136,7 @@ static err_t readVar128(struct decoder *dec, uint64_t *v, vomControl *ctl) {
   return ERR_OK;
 }
 
-static bool tidBuiltin(int64_t tid) {
+static bool isPrimitive(int64_t tid) {
   if (tid >= 1 && tid <= 15) {
     return true;
   }
@@ -94,14 +158,79 @@ cell_t *valueGetCell(value_t *v, ulong_t cell) {
   return (cell_t *)(uintptr_t)&v->buf.buf[cell * sizeof(cell_t)];
 }
 
-static int64_t unpackSign(uint64_t in) {
-  if ((in & 1) == 0) {
-    return in>>1;
+static struct utype *findUt(buf_t name) {
+  for (int i = 0; i < nKnownUserTypes; i++) {
+    if (bufEqual(knownUserTypes[i].tname, name)) {
+      return &knownUserTypes[i];
+    }
   }
-  return ~(in>>1);
+  return NULL;
 }
 
-err_t vomDecode(struct decoder *dec, value_t *vout, bool *done) {
+static struct utype *lookupUt(int64_t tid) {
+  int64_t i = tid - utidBase;
+  if (i < 0 || i >= nKnownUserTypes) {
+    return NULL;
+  }
+  return &knownUserTypes[i];
+}
+
+static err_t decodeType(decoder_t *dec) {
+  vomControl ctl = controlNone;
+  err_t err = ERR_OK;
+
+  while (dec->left.len > 0) {
+    uint64_t tlen;
+    err = decodeVar128(&dec->left, &tlen, &ctl); ck();
+    if (ctl != controlNone) {
+      if (ctl == controlEnd) {
+	return ERR_OK;
+      }
+      
+      // unexpected control message here
+      err = ERR_DECVOM; ck();
+    }
+
+    int64_t curTid = -1 * dec->curTid;
+    if (curTid > utidMax) {
+      err = ERR_DECVOM; ck();
+    }
+
+    // Hack our way through parsing the wireStruct to find the name
+    // This is all trash that will get more elegant when I understand it better.
+
+    if (dec->left.len < 2 ||
+	dec->left.buf[0] != 6 ||
+	dec->left.buf[1] != 0) {
+      // why isn't there a 06 00 on the front? so mean!
+      bufDump("no 06 00?", dec->left);
+      err = ERR_DECVOM; ck();
+    }
+    
+    buf_t lenbuf = dec->left;
+    // eat the 06 00 off the front of it.
+    lenbuf.buf += 2;
+    lenbuf.len -= 2;
+    
+    uint64_t len;
+    err = decodeVar128(&lenbuf, &len, &ctl); ck();
+    if (ctl != controlNone) {
+      // unexpected control message here
+      err = ERR_DECVOM; ck();
+    }
+    
+    buf_t name = lenbuf;
+    name.len = len;
+    dec->utypes[curTid - utidBase] = findUt(name);
+
+    eat(&dec->left, tlen);
+    return ERR_OK;      
+  }
+
+  return ERR_DECVOM_MORE;
+}
+
+err_t vomDecode(decoder_t *dec, value_t *vout, bool *done) {
   vomControl ctl = controlNone;
   err_t err = ERR_OK;
 
@@ -115,13 +244,13 @@ err_t vomDecode(struct decoder *dec, value_t *vout, bool *done) {
     }
     dec->version = vomVersion81;
     dec->curTid = 0;
-    eat(dec, 1);
+    eat(&dec->left, 1);
   }
 
-  while (dec->left.len) {
+  while (dec->left.len > 0) {
     if (dec->curTid == 0) {
       uint64_t tid;
-      err = readVar128(dec, &tid, &ctl); ck();
+      err = decodeVar128(&dec->left, &tid, &ctl); ck();
       if (ctl != controlNone) {
 	if (ctl == controlEnd) {
 	  return ERR_OK;
@@ -131,12 +260,12 @@ err_t vomDecode(struct decoder *dec, value_t *vout, bool *done) {
 	return ERR_DECVOM;
       }
 
-      dec->curTid = unpackSign(tid);
+      dec->curTid = decodeSign(tid);
       // go do the loop again, now that we have our tid
       continue;
     }
 
-    if (tidBuiltin(dec->curTid)) {
+    if (isPrimitive(dec->curTid)) {
       ulong_t cell;
       err = valueNextCell(vout, &cell); ck();
       cell_t *c = valueGetCell(vout, cell);
@@ -146,22 +275,22 @@ err_t vomDecode(struct decoder *dec, value_t *vout, bool *done) {
       unsigned char b;
       switch (dec->curTid) {
       case tidBool:
-	err = readByte(dec, &b); ck();
+	err = decodeByte(&dec->left, &b); ck();
 	c->u.Bool = (b == 1);
 	break;
       case tidByte:
-	err = readByte(dec, &b); ck();
+	err = decodeByte(&dec->left, &b); ck();
 	c->u.Byte = b;
 	break;	
       case tidInt64:
-	err = readVar128(dec, &val, &ctl); ck();
+	err = decodeVar128(&dec->left, &val, &ctl); ck();
 	if (ctl != controlNone) {
-	  return ERR_DECVOM;
+	  err = ERR_DECVOM; ck();
 	}
-	c->u.Int64 = unpackSign(val);
+	c->u.Int64 = decodeSign(val);
 	break;
       default:
-	return ERR_DECVOM;
+	err = ERR_DECVOM; ck();
       }
 
       // the only way to get here is by sucessfully decoding a
@@ -170,20 +299,55 @@ err_t vomDecode(struct decoder *dec, value_t *vout, bool *done) {
       return ERR_OK;
     }
     
-    // it is a type defn or a user-defined type, we don't do those yet
-    return ERR_DECVOM;
+    if (dec->curTid < 0) {
+      err = decodeType(dec); ck();
+      // back to the top of the while to see if there is a value to process now
+      dec->curTid = 0;
+      continue;
+    }
+
+    // it is a user-defined type. lookup and decode.
+
+    struct utype *ut = lookupUt(dec->curTid);
+    if (ut == NULL) {
+      // unknown type
+      err = ERR_DECVOM; ck();
+    }
+
+    uint64_t vlen;    
+    err = decodeVar128(&dec->left, &vlen, &ctl); ck();
+    if (ctl != controlNone) {
+      // unexpected control message here
+      err = ERR_DECVOM; ck();
+    }
+  
+    buf_t valbuf = dec->left;
+    valbuf.len = vlen;
+    eat(&dec->left, vlen);
+
+    // prepare the destination buffer: put the input that the
+    // decoder will point back at in front, then put a place for
+    // the structure itself at the end.
+    bufExpand(&vout->buf, vlen + ut->sz);
+    vout->buf.len = 0;
+    bufAppend(&vout->buf, valbuf);
+    vout->ptr = &vout->buf.buf[vlen];
+
+    err = ut->decoder(vout->buf, vout->ptr); ck();
+    *done = true;
+    return ERR_OK;
   }
   
   // out of data to process
-  return ERR_DECVOM_MORE;
+  err = ERR_DECVOM_MORE; ck();
+  return ERR_OK;
 }
 
-void decoderDealloc(struct decoder *dec) {
+void decoderDealloc(decoder_t *dec) {
   bufDealloc(&dec->in);
   dec->left.buf = NULL;
   dec->left.len = 0;
 }
-
 
 void valueZero(value_t *v) {
   if (v->buf.buf != NULL) {
@@ -191,6 +355,19 @@ void valueZero(value_t *v) {
   }
 }
 
-err_t decoderFeed(struct decoder *dec, buf_t in) {
+err_t decoderFeed(decoder_t *dec, buf_t in) {
   return bufAppend(&dec->in, in);
+}
+
+err_t vomRegister(buf_t tname, ssize_t sz, err_t (*decoder)(buf_t, void *)) {
+  if (nKnownUserTypes >= utidMax) {
+    return ERR_DECVOM;
+  }
+
+  knownUserTypes[nKnownUserTypes].tname = tname;
+  knownUserTypes[nKnownUserTypes].sz = sz;
+  knownUserTypes[nKnownUserTypes].decoder = decoder;
+  
+  nKnownUserTypes++;
+  return ERR_OK;
 }

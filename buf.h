@@ -5,6 +5,7 @@
 #pragma once
 
 #include "miniv.h"
+#include <stdbool.h>
 
 typedef struct {
   unsigned char *buf;
@@ -46,6 +47,9 @@ void bufTruncate(buf_t *b);
 
 // bufCopy puts into dest a copy of src.
 err_t bufCopy(buf_t *dest, buf_t src);
+
+// bufEqual returns true if b1 and b2 have the same bytes in them.
+bool bufEqual(buf_t b1, buf_t b2);
 
 typedef struct {
   buf_t buf;
