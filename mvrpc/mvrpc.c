@@ -45,7 +45,7 @@ int main(int argc, char **argv) {
   ckerr("handshake:", connectionHandshake(c));
   
   while (1) {
-    struct Message m;
+    struct Message m = {};
     ckerr("read frame", connectionReadFrame(c));
     ckerr("decode message", messageRead(c->frame, &m));
     printf(" -> (%x)%s\n", m.mtype, messageTypeName(m.mtype));
