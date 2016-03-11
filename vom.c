@@ -146,18 +146,6 @@ static bool isPrimitive(int64_t tid) {
   return false;
 }
 
-static err_t valueNextCell(value_t *v, ulong_t *cellp) {
-  ulong_t newLen = v->buf.len+sizeof(cell_t);
-  err_t err = bufExpand(&v->buf, newLen); ck();
-  *cellp = (newLen/sizeof(cell_t))-1;
-  v->buf.len = newLen;
-  return ERR_OK;
-}
-
-cell_t *valueGetCell(value_t *v, ulong_t cell) {
-  return (cell_t *)(uintptr_t)&v->buf.buf[cell * sizeof(cell_t)];
-}
-
 static struct utype *findUt(buf_t name) {
   for (int i = 0; i < nKnownUserTypes; i++) {
     if (bufEqual(knownUserTypes[i].tname, name)) {
@@ -266,37 +254,9 @@ err_t vomDecode(decoder_t *dec, value_t *vout, bool *done) {
     }
 
     if (isPrimitive(dec->curTid)) {
-      ulong_t cell;
-      err = valueNextCell(vout, &cell); ck();
-      cell_t *c = valueGetCell(vout, cell);
-      c->ctype = (uint64_t)dec->curTid;
-      
-      uint64_t val;
-      unsigned char b;
-      switch (dec->curTid) {
-      case tidBool:
-	err = decodeByte(&dec->left, &b); ck();
-	c->u.Bool = (b == 1);
-	break;
-      case tidByte:
-	err = decodeByte(&dec->left, &b); ck();
-	c->u.Byte = b;
-	break;	
-      case tidInt64:
-	err = decodeVar128(&dec->left, &val, &ctl); ck();
-	if (ctl != controlNone) {
-	  err = ERR_DECVOM; ck();
-	}
-	c->u.Int64 = decodeSign(val);
-	break;
-      default:
-	err = ERR_DECVOM; ck();
-      }
-
-      // the only way to get here is by sucessfully decoding a
-      // builtin. So congrats, we're done.
-      *done = true;
-      return ERR_OK;
+      // with the current design, we shoud only be seeing primitives
+      // in decoder callbacks.
+      err = ERR_DECVOM; ck();
     }
     
     if (dec->curTid < 0) {
@@ -328,7 +288,7 @@ err_t vomDecode(decoder_t *dec, value_t *vout, bool *done) {
     // prepare the destination buffer: put the input that the
     // decoder will point back at in front, then put a place for
     // the structure itself at the end.
-    bufExpand(&vout->buf, vlen + ut->sz);
+    bufExpand(&vout->buf, vlen + (uint64_t)ut->sz);
     vout->buf.len = 0;
     bufAppend(&vout->buf, valbuf);
     vout->ptr = &vout->buf.buf[vlen];

@@ -24,23 +24,9 @@ typedef enum {
 } vomControl;
 
 typedef struct {
-  // buf is storage space for a sequence of cell_t records and their underlying
-  // data. This makes deallocating value_t simply bufDealloc(v.buf). It also makes
-  // it easy to account for (and possibly limit) the entire memory consumption
-  // of a given value_t.
   buf_t buf;
   void *ptr;
 } value_t;
-
-// A value_t is a (possibly recursive) collection of cell_t's.
-typedef struct {
-  uint64_t ctype;
-  union {
-    bool Bool;
-    unsigned char Byte;
-    int64_t Int64;
-  } u;
-} cell_t;
 
 // TODO: dynamically allocate typedefn table
 enum {
@@ -75,8 +61,6 @@ err_t decoderFeed(decoder_t *dec, buf_t in);
 // valueZero ensures that the vom_t is ready to be filled with a result.
 // It does not deallocate underlying storage. For that, see valueDealloc.
 void valueZero(value_t *v);
-
-cell_t *valueGetCell(value_t *v, ulong_t cellnum);
 
 // vomRegister registers a given type, so that vomDecode will
 // know which callbacks to use to encode and decode it.
