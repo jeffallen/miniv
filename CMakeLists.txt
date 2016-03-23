@@ -24,6 +24,7 @@ set(cfiles
 	framer.c
 	signature.c
 	vom.c
+	v23_uniqueid.c
 )
 add_library (miniv ${cfiles})
 target_link_libraries(miniv LINK_PUBLIC ${nacl_lib})
