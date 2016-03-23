@@ -174,12 +174,12 @@ static struct utype *findUt(buf_t name) {
   return NULL;
 }
 
-static struct utype *lookupUt(int64_t tid) {
-  int64_t i = tid - utidBase;
-  if (i < 0 || i >= nKnownUserTypes) {
+static struct utype *lookupUtid(decoder_t *dec, int64_t utid) {
+  int64_t i = utid - utidBase;
+  if (i < 0 || i >= utidMax) {
     return NULL;
   }
-  return &knownUserTypes[i];
+  return dec->utypes[i];
 }
 
 static err_t decodeType(decoder_t *dec) {
@@ -203,21 +203,31 @@ static err_t decodeType(decoder_t *dec) {
       err = ERR_DECVOM; ck();
     }
 
-    // Hack our way through parsing the wireStruct to find the name
-    // This is all trash that will get more elegant when I understand it better.
-
-    if (dec->left.len < 2 ||
-	dec->left.buf[0] != 6 ||
-	dec->left.buf[1] != 0) {
-      // why isn't there a 06 00 on the front? so mean!
-      bufDump("no 06 00?", dec->left);
+    uint64_t before = dec->left.len;
+    uint64_t kind0;
+    err = decodeVar128(&dec->left, &kind0, &ctl); ck();
+    if (ctl != controlNone) {
+      if (ctl == controlEnd) {
+	return ERR_OK;
+      }
+      
+      // unexpected control message here
+      err = ERR_DECVOM; ck();
+    }
+    uint64_t kindlen = before - dec->left.len;
+    tlen -= kindlen;
+    
+    wireKind kind = (wireKind)kind0;
+    if (kind != kindStruct && kind != kindArray) {
+      printf("kind %d\n", kind); 
+      bufDump("not impl", dec->left);
       err = ERR_DECVOM; ck();
     }
     
     buf_t lenbuf = dec->left;
-    // eat the 06 00 off the front of it.
-    lenbuf.buf += 2;
-    lenbuf.len -= 2;
+    // eat the index number 0 off the front of it.
+    lenbuf.buf += 1;
+    lenbuf.len -= 1;
     
     uint64_t len;
     err = decodeVar128(&lenbuf, &len, &ctl); ck();
@@ -231,7 +241,7 @@ static err_t decodeType(decoder_t *dec) {
     dec->utypes[curTid - utidBase] = findUt(name);
 
     eat(&dec->left, tlen);
-    return ERR_OK;      
+    return ERR_OK;
   }
 
   return ERR_DECVOM_MORE;
@@ -268,8 +278,6 @@ err_t vomDecode(decoder_t *dec, value_t *vout, bool *done) {
       }
 
       dec->curTid = decodeSign(tid);
-      // go do the loop again, now that we have our tid
-      continue;
     }
 
     if (isPrimitive(dec->curTid)) {
@@ -277,7 +285,7 @@ err_t vomDecode(decoder_t *dec, value_t *vout, bool *done) {
       // in decoder callbacks.
       err = ERR_DECVOM; ck();
     }
-    
+
     if (dec->curTid < 0) {
       err = decodeType(dec); ck();
       // back to the top of the while to see if there is a value to process now
@@ -287,17 +295,25 @@ err_t vomDecode(decoder_t *dec, value_t *vout, bool *done) {
 
     // it is a user-defined type. lookup and decode.
 
-    struct utype *ut = lookupUt(dec->curTid);
+    struct utype *ut = lookupUtid(dec, dec->curTid);
     if (ut == NULL) {
       // unknown type
       err = ERR_DECVOM; ck();
     }
 
-    uint64_t vlen;    
+    uint64_t vlen;
     err = decodeVar128(&dec->left, &vlen, &ctl); ck();
     if (ctl != controlNone) {
       // unexpected control message here
       err = ERR_DECVOM; ck();
+    }
+
+    // Implement the special case for Array length.
+    if (ut->kind == kindArray) {
+      if (vlen != 0) {
+	err = ERR_DECVOM; ck();
+      }
+      vlen = (uint64_t)ut->sz;
     }
   
     buf_t valbuf = dec->left;
@@ -311,9 +327,12 @@ err_t vomDecode(decoder_t *dec, value_t *vout, bool *done) {
     vout->buf.len = 0;
     bufAppend(&vout->buf, valbuf);
     vout->ptr = &vout->buf.buf[vlen];
-
-    err = ut->decoder(vout->buf, vout->ptr); ck();
+    vout->typ = NULL;
+    
+    buf_t decbuf = vout->buf;
+    err = ut->decoder(&decbuf, vout->ptr); ck();
     *done = true;
+    vout->typ = ut;  // only set it now that we know we were successful
     return ERR_OK;
   }
   
@@ -328,24 +347,34 @@ void decoderDealloc(decoder_t *dec) {
   dec->left.len = 0;
 }
 
+void valueDealloc(value_t *v) {
+  valueZero(v);
+  bufDealloc(&v->buf);
+}
+
 void valueZero(value_t *v) {
   if (v->buf.buf != NULL) {
     bufTruncate(&v->buf);
   }
+  v->ptr = NULL;
 }
 
 err_t decoderFeed(decoder_t *dec, buf_t in) {
   return bufAppend(&dec->in, in);
 }
 
-err_t vomRegister(buf_t tname, ssize_t sz, err_t (*decoder)(buf_t, void *)) {
+err_t vomRegister(buf_t tname, wireKind kind, ssize_t sz, err_t (*decoder)(buf_t *, void *)) {
   if (nKnownUserTypes >= utidMax) {
     return ERR_DECVOM;
   }
 
-  knownUserTypes[nKnownUserTypes].tname = tname;
-  knownUserTypes[nKnownUserTypes].sz = sz;
-  knownUserTypes[nKnownUserTypes].decoder = decoder;
+  struct utype ut = {
+    .tname = tname,
+    .kind = kind,
+    .sz = sz,
+    .decoder = decoder,
+  };
+  knownUserTypes[nKnownUserTypes] = ut;
   
   nKnownUserTypes++;
   return ERR_OK;

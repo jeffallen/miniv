@@ -140,6 +140,13 @@ void bufTruncate(buf_t *b) {
   b->len = 0;
 }
 
+bool bufEqual(buf_t b1, buf_t b2) {
+  if (b1.len != b2.len) {
+    return false;
+  }
+  return (memcmp(b1.buf, b2.buf, b1.len) == 0);
+}
+
 void queueInit(queue_t *q, ulong_t itemSize) {
   bufTruncate(&q->buf);
   q->itemSize = itemSize;
@@ -153,9 +160,3 @@ err_t queueAppend(queue_t *q, const unsigned char *p) {
   return bufAppend(&q->buf, bufWrap((void *)(uintptr_t)p, q->itemSize));
 }
 
-bool bufEqual(buf_t b1, buf_t b2) {
-  if (b1.len != b2.len) {
-    return false;
-  }
-  return (memcmp(b1.buf, b2.buf, b1.len) == 0);
-}

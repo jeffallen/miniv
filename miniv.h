@@ -45,3 +45,4 @@ enum {
 #include "message.h"
 #include "signature.h"
 #include "vom.h"
+#include "v23.h"

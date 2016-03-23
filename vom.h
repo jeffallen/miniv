@@ -10,13 +10,11 @@ typedef enum {
   vomVersion81 = 0x81,
 } vomVersion;
 
-// These are the primitive type id's, from the VOM spec.
+// These are the kinds of objects from the WireType spec.
 typedef enum {
-  tidBool = 1,
-  tidByte = 2,
-  tidInt64 = 9,
-  tidString = 40,
-} vomType;
+  kindArray = 2,
+  kindStruct = 6,
+} wireKind;
 
 typedef enum {
   controlNone = 0,
@@ -27,6 +25,7 @@ typedef enum {
 typedef struct {
   buf_t buf;
   void *ptr;
+  struct utype *typ;
 } value_t;
 
 // TODO: dynamically allocate typedefn table
@@ -37,8 +36,9 @@ enum {
 
 struct utype {
   buf_t tname;
+  wireKind kind;
   ssize_t sz;
-  err_t (*decoder)(buf_t, void *);
+  err_t (*decoder)(buf_t *, void *);
 };
 
 typedef struct {
@@ -63,9 +63,12 @@ err_t decoderFeed(decoder_t *dec, buf_t in);
 // It does not deallocate underlying storage. For that, see valueDealloc.
 void valueZero(value_t *v);
 
+// valueDealloc frees all storage associated with a value.
+void valueDealloc(value_t *v);
+
 // vomRegister registers a given type, so that vomDecode will
 // know which callbacks to use to encode and decode it.
-err_t vomRegister(buf_t name, ssize_t sz, err_t (*decoder)(buf_t, void *));
+err_t vomRegister(buf_t name, wireKind kind, ssize_t sz, err_t (*decoder)(buf_t*, void *));
 
 // Here are all the primitive decoders that will be called by
 // the structure decoders.
