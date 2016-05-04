@@ -9,6 +9,15 @@ big enough to run C and a networking stack.
 
 [![Build Status](https://travis-ci.org/jeffallen/miniv.svg?branch=master)](https://travis-ci.org/jeffallen/miniv)
 
+Status: Unfinished and likely to not get finished
+-------------------------------------------------
+
+On hiatus. At this point, the proof of concept for how the vdl tool should generate the C
+is done, but I've lost interest in this due to some other stuff I need to do. This has been
+and interesting experiment but it is unlikely to get finished anytime soon. If you are reading this
+and interested in moving it forward, feel free to get in touch and I'll show you the first draft
+of the vdl tool changes.
+
 Go and cgo
 ----------
 
