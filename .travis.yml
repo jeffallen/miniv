@@ -13,7 +13,7 @@ before_install:
 
 install:
   - go get -t ./...
-  - go test -v -tags noopenssl
+  - go test -v
   - mkdir obj
   - cd obj
   - cmake ..
